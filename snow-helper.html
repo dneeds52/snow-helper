@@ -106,6 +106,15 @@ button.act.primary:hover{background:#8b5cf6;border-color:#8b5cf6;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:4px;}
 </style>
+
+<script>
+function sw(id){
+  var TABS=['tm','em','bm','hl'],PANELS=['ptm','pem','pbm','phl'];
+  var i=TABS.indexOf(id);
+  document.querySelectorAll('.tab').forEach(function(b,n){b.classList.toggle('on',n===i);});
+  document.querySelectorAll('.panel').forEach(function(p,n){p.classList.toggle('on',n===i);});
+}
+</script>
 </head>
 <body>
 
@@ -363,12 +372,6 @@ function renderLegend(){
   });
 }
 
-var TABS=['tm','em','bm','hl'],PANELS=['ptm','pem','pbm','phl'];
-function sw(id){
-  var i=TABS.indexOf(id);
-  document.querySelectorAll('.tab').forEach(function(b,n){b.classList.toggle('on',n===i);});
-  document.querySelectorAll('.panel').forEach(function(p,n){p.classList.toggle('on',n===i);});
-}
 
 function tog(id){document.getElementById(id).classList.toggle('open');}
 document.addEventListener('click',function(e){if(!e.target.closest('.dd-wrap'))document.querySelectorAll('.dd-wrap.open').forEach(function(d){d.classList.remove('open');});});
