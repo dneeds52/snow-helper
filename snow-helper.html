@@ -58,7 +58,7 @@ a.dd-item:hover{background:#2e2e4a;color:#fff;}
 button.act{padding:8px 16px;border-radius:7px;border:1px solid #2a2a3e;background:transparent;color:#e2e8f0;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;}
 button.act:hover{border-color:#a78bfa;color:#a78bfa;}
 button.act.primary{background:#a78bfa;border-color:#a78bfa;color:#0f0f1a;}
-button.act.primary:hover{background:#8b5cf6;border-color:#8b5cf6;}
+button.act.primary:hover{background:#8b5cf6;}
 .bm-card{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:10px;padding:16px 18px;margin-bottom:14px;}
 .bm-steps{display:flex;flex-direction:column;gap:9px;margin:10px 0;}
 .bm-step{display:flex;gap:10px;align-items:flex-start;}
@@ -76,91 +76,79 @@ button.act.primary:hover{background:#8b5cf6;border-color:#8b5cf6;}
 .ctag{font-family:'JetBrains Mono',monospace;font-size:.65rem;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:3px;padding:1px 5px;color:#67e8f9;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:4px;}
 </style>
-
-<!-- ALL JS DEFINED HERE IN HEAD SO ONCLICK ATTRS ALWAYS WORK -->
 <script>
-var TM_HREF = 'javascript:(function()%7B%20function%20findHeaderIndex(label)%7B%20var%20th%3Ddocument.querySelectorAll('table%20th')%2Cidx%3D-1%3B%20th.forEach(function(el%2Ci)%7Bif(el.textContent.trim().startsWith(label))idx%3Di%3B%7D)%3B%20return%20idx%3B%20%7D%20if(window.location.href.indexOf('task_list.do')%3C0)%7Balert('Navigate%20to%20a%20ServiceNow%20task_list.do%20view%20first.')%3Breturn%3B%7D%20var%20hi%3DfindHeaderIndex('Short%20description')%3B%20if(hi%3C0)%7Balert('Could%20not%20find%20Short%20description%20column.')%3Breturn%3B%7D%20var%20styles%3D%7B%20''%3A%20%7Bb%3A'%237D3C98'%2Cc%3A'%237D3C98'%2Cbg%3A'%23E8DAEF'%2Clbl%3A'%5BInitial%20Action%5D%20'%7D%2C%20'0'%3A%20%7Bb%3A'%23856404'%2Cc%3A'%23856404'%2Cbg%3A'%23fff3cd'%2Clbl%3A'%5BUpdate%20Needed%5D%20'%7D%2C%20'1'%3A%20%7Bb%3A'%23D35400'%2Cc%3A'%23D35400'%2Cbg%3A'%23F5CBA7'%2Clbl%3A'%5BQuick%20Win%5D%20'%7D%2C%20'2'%3A%20%7Bb%3A'%23004085'%2Cc%3A'%23004085'%2Cbg%3A'%23cce5ff'%2Clbl%3A'%5BPrioritize%5D%20'%7D%2C%20'3'%3A%20%7Bb%3A'%23383d41'%2Cc%3A'%23383d41'%2Cbg%3A'%23e2e3e5'%2Clbl%3A'%5BDiscuss%5D%20'%7D%2C%20'4'%3A%20%7Bb%3A'%23155724'%2Cc%3A'%23155724'%2Cbg%3A'%23d4edda'%2Clbl%3A'%5BScheduled%5D%20'%7D%2C%20'5'%3A%20%7Bb%3A'%23721c24'%2Cc%3A'%23721c24'%2Cbg%3A'%23f8d7da'%2Clbl%3A'%5BBlocked%5D%20'%7D%2C%20'6'%3A%20%7Bb%3A'%23818182'%2Cc%3A'%23818182'%2Cbg%3A'%23f7f7f9'%2Clbl%3A'%5BDeferred%5D%20'%7D%2C%20'7'%3A%20%7Bb%3A'%23BB0086'%2Cc%3A'%23BB0086'%2Cbg%3A'%23FFD1F2'%2Clbl%3A'%5BDC%20Move%5D%20'%7D%2C%20'8'%3A%20%7Bb%3A'%23008970'%2Cc%3A'%23008970'%2Cbg%3A'%23B3FFF1'%2Clbl%3A'%5BASAP%20PC%5D%20'%7D%20%7D%3B%20var%20labels%3DObject.values(styles).map(function(s)%7Breturn%20s.lbl%3B%7D)%3B%20labels.push('%5BUnmapped%5D%20')%3B%20document.querySelectorAll('table%20tbody%20tr').forEach(function(row)%7B%20var%20cells%3Drow.querySelectorAll('td')%3B%20if(cells.length%3C%3Dhi)return%3B%20var%20orderCell%3Dcells%5Bhi%5D%3B%20var%20prevCell%3Dcells%5Bhi-1%5D%3B%20if(!prevCell)return%3B%20var%20orderText%3DorderCell.innerText%7C%7C''%3B%20var%20key%3DorderText.substring(0%2C1)%3B%20var%20s%3Dstyles%5Bkey%5D%7C%7C%7Bb%3A'red'%2Cc%3A'red'%2Cbg%3A'yellow'%2Clbl%3A'%5BUnmapped%5D%20'%7D%3B%20labels.forEach(function(l)%7BprevCell.innerText%3DprevCell.innerText.replace(l%2C'')%3B%7D)%3B%20prevCell.style.borderBottom%3D'1px%20solid%20'%2Bs.b%3B%20prevCell.style.color%3Ds.c%3B%20prevCell.style.backgroundColor%3Ds.bg%3B%20prevCell.innerHTML%3Ds.lbl%2BprevCell.innerHTML%3B%20%7D)%3B%20%7D)()';
-var EM_HREF = 'javascript:(function()%7B%20var%20numEl%3Ddocument.getElementById('sys_readonly.sc_task.number')%7C%7Cdocument.getElementById('sys_readonly.incident.number')%7C%7Cdocument.getElementById('sys_readonly.change_request.number')%3B%20if(!numEl)%7Balert('Open%20a%20SNOW%20ticket%20page%20first.')%3Breturn%3B%7D%20var%20num%3DnumEl.value%3B%20var%20ttype%3D%2F%5Ba-zA-Z%5D%2B%2Fg.exec(num)%5B0%5D.toLowerCase()%3B%20var%20sysId%3D(document.getElementById('sys_uniqueValue')%7C%7C%7B%7D).value%7C%7C''%3B%20var%20fm%3D%7B%20sctask%3A%7Bfile%3A'sc_task.do'%2Creq%3A'sc_task.request.requested_for_label'%2Cnum%3A'sys_readonly.sc_task.number'%2Csd%3A'sc_task.short_description'%2Cdesc%3A'sc_task.description'%2Crn%3A'sc_task.request_label'%7D%2C%20inc%3A%7Bfile%3A'incident.do'%2Creq%3A'sys_display.incident.caller_id'%2Cnum%3A'sys_readonly.incident.number'%2Csd%3A'incident.short_description'%2Cdesc%3A'incident.description'%7D%2C%20chg%3A%7Bfile%3A'change_request.do'%2Creq%3A'sys_display.change_request.requested_by'%2Cnum%3A'sys_readonly.change_request.number'%2Csd%3A'change_request.short_description'%2Cdesc%3A'change_request.description'%7D%20%7D%3B%20var%20m%3Dfm%5Bttype%5D%3B%20if(!m)%7Balert('Unknown%20ticket%20type%3A%20'%2Bttype)%3Breturn%3B%7D%20function%20gv(id)%7Bvar%20el%3Ddocument.getElementById(id)%3Breturn%20el%3F(el.value%7C%7C'')%3A''%3B%7D%20var%20requester%3Dgv(m.req)%2CticketNum%3Dgv(m.num)%2CshortDesc%3Dgv(m.sd)%2Cdesc%3Dgv(m.desc)%2CreqNum%3Dm.rn%3Fgv(m.rn)%3A''%3B%20var%20firstName%3D(%2Fw*%2F.exec(requester)%7C%7C%5B''%5D)%5B0%5D%3B%20var%20link%3D'https%3A%20var%20nl%3D'%20'%3B%20var%20body%3D'Hi%20'%2BfirstName%2B'!'%2Bnl%2Bnl%2B'%3D%3D%3D%20EMAIL%20INTRO%20GOES%20HERE%20%3D%3D%3D'%2Bnl%2Bnl%2B'________________________________________'%2Bnl%2Bnl%2BticketNum%2B'%20'%2BshortDesc%2Bnl%2Blink%2Bnl%2Bnl%2B'Description%3A'%2Bnl%2Bnl%2Bdesc%2Bnl%2B'________________________________________'%2Bnl%2Bnl%3B%20var%20subject%3Dttype%3D%3D%3D'sctask'%26%26reqNum%3F(reqNum%2B'%20%2F%20'%2BticketNum%2B'%20'%2BshortDesc)%3A(ticketNum%2B'%20'%2BshortDesc)%3B%20var%20mailto%3D'mailto%3A'%2Brequester%2B'%3Fsubject%3D'%2BencodeURIComponent(subject)%2B'%26body%3D'%2BencodeURIComponent(body)%3B%20if(mailto.length%3E%3D1800)%7Balert('Body%20truncated%20%E2%80%94%20use%20Copy%20Body%20Text.')%3Bmailto%3Dmailto.substring(0%2C1799)%3B%7D%20window.location.href%3Dmailto%3B%20%7D)()';
+// TM_HREF and EM_HREF use JSON.stringify so they are safely double-quoted with all internal quotes escaped
+var TM_HREF = "javascript:(function()%7B%20function%20findHeaderIndex(label)%7B%20var%20th%3Ddocument.querySelectorAll(%22table%20th%22)%2Cidx%3D-1%3B%20th.forEach(function(el%2Ci)%7Bif(el.textContent.trim().startsWith(label))idx%3Di%3B%7D)%3B%20return%20idx%3B%20%7D%20if(window.location.href.indexOf(%22task_list.do%22)%3C0)%7Balert(%22Navigate%20to%20a%20ServiceNow%20task_list.do%20view%20first.%22)%3Breturn%3B%7D%20var%20hi%3DfindHeaderIndex(%22Short%20description%22)%3B%20if(hi%3C0)%7Balert(%22Could%20not%20find%20Short%20description%20column.%22)%3Breturn%3B%7D%20var%20styles%3D%7B%20%22%22%3A%20%7Bb%3A%22%237D3C98%22%2Cc%3A%22%237D3C98%22%2Cbg%3A%22%23E8DAEF%22%2Clbl%3A%22%5BInitial%20Action%5D%20%22%7D%2C%20%220%22%3A%20%7Bb%3A%22%23856404%22%2Cc%3A%22%23856404%22%2Cbg%3A%22%23fff3cd%22%2Clbl%3A%22%5BUpdate%20Needed%5D%20%22%7D%2C%20%221%22%3A%20%7Bb%3A%22%23D35400%22%2Cc%3A%22%23D35400%22%2Cbg%3A%22%23F5CBA7%22%2Clbl%3A%22%5BQuick%20Win%5D%20%22%7D%2C%20%222%22%3A%20%7Bb%3A%22%23004085%22%2Cc%3A%22%23004085%22%2Cbg%3A%22%23cce5ff%22%2Clbl%3A%22%5BPrioritize%5D%20%22%7D%2C%20%223%22%3A%20%7Bb%3A%22%23383d41%22%2Cc%3A%22%23383d41%22%2Cbg%3A%22%23e2e3e5%22%2Clbl%3A%22%5BDiscuss%5D%20%22%7D%2C%20%224%22%3A%20%7Bb%3A%22%23155724%22%2Cc%3A%22%23155724%22%2Cbg%3A%22%23d4edda%22%2Clbl%3A%22%5BScheduled%5D%20%22%7D%2C%20%225%22%3A%20%7Bb%3A%22%23721c24%22%2Cc%3A%22%23721c24%22%2Cbg%3A%22%23f8d7da%22%2Clbl%3A%22%5BBlocked%5D%20%22%7D%2C%20%226%22%3A%20%7Bb%3A%22%23818182%22%2Cc%3A%22%23818182%22%2Cbg%3A%22%23f7f7f9%22%2Clbl%3A%22%5BDeferred%5D%20%22%7D%2C%20%227%22%3A%20%7Bb%3A%22%23BB0086%22%2Cc%3A%22%23BB0086%22%2Cbg%3A%22%23FFD1F2%22%2Clbl%3A%22%5BDC%20Move%5D%20%22%7D%2C%20%228%22%3A%20%7Bb%3A%22%23008970%22%2Cc%3A%22%23008970%22%2Cbg%3A%22%23B3FFF1%22%2Clbl%3A%22%5BASAP%20PC%5D%20%22%7D%20%7D%3B%20var%20labels%3DObject.values(styles).map(function(s)%7Breturn%20s.lbl%3B%7D)%3B%20labels.push(%22%5BUnmapped%5D%20%22)%3B%20document.querySelectorAll(%22table%20tbody%20tr%22).forEach(function(row)%7B%20var%20cells%3Drow.querySelectorAll(%22td%22)%3B%20if(cells.length%3C%3Dhi)return%3B%20var%20orderCell%3Dcells%5Bhi%5D%3B%20var%20prevCell%3Dcells%5Bhi-1%5D%3B%20if(!prevCell)return%3B%20var%20orderText%3DorderCell.innerText%7C%7C%22%22%3B%20var%20key%3DorderText.substring(0%2C1)%3B%20var%20s%3Dstyles%5Bkey%5D%7C%7C%7Bb%3A%22red%22%2Cc%3A%22red%22%2Cbg%3A%22yellow%22%2Clbl%3A%22%5BUnmapped%5D%20%22%7D%3B%20labels.forEach(function(l)%7BprevCell.innerText%3DprevCell.innerText.replace(l%2C%22%22)%3B%7D)%3B%20prevCell.style.borderBottom%3D%221px%20solid%20%22%2Bs.b%3B%20prevCell.style.color%3Ds.c%3B%20prevCell.style.backgroundColor%3Ds.bg%3B%20prevCell.innerHTML%3Ds.lbl%2BprevCell.innerHTML%3B%20%7D)%3B%20%7D)()";
+var EM_HREF = "javascript:(function()%7B%20var%20numEl%3Ddocument.getElementById(%22sys_readonly.sc_task.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.incident.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.change_request.number%22)%3B%20if(!numEl)%7Balert(%22Open%20a%20SNOW%20ticket%20page%20first.%22)%3Breturn%3B%7D%20var%20num%3DnumEl.value%3B%20var%20ttype%3D%2F%5Ba-zA-Z%5D%2B%2Fg.exec(num)%5B0%5D.toLowerCase()%3B%20var%20sysId%3D(document.getElementById(%22sys_uniqueValue%22)%7C%7C%7B%7D).value%7C%7C%22%22%3B%20var%20fm%3D%7B%20sctask%3A%7Bfile%3A%22sc_task.do%22%2Creq%3A%22sc_task.request.requested_for_label%22%2Cnum%3A%22sys_readonly.sc_task.number%22%2Csd%3A%22sc_task.short_description%22%2Cdesc%3A%22sc_task.description%22%2Crn%3A%22sc_task.request_label%22%7D%2C%20inc%3A%7Bfile%3A%22incident.do%22%2Creq%3A%22sys_display.incident.caller_id%22%2Cnum%3A%22sys_readonly.incident.number%22%2Csd%3A%22incident.short_description%22%2Cdesc%3A%22incident.description%22%7D%2C%20chg%3A%7Bfile%3A%22change_request.do%22%2Creq%3A%22sys_display.change_request.requested_by%22%2Cnum%3A%22sys_readonly.change_request.number%22%2Csd%3A%22change_request.short_description%22%2Cdesc%3A%22change_request.description%22%7D%20%7D%3B%20var%20m%3Dfm%5Bttype%5D%3B%20if(!m)%7Balert(%22Unknown%20ticket%20type%3A%20%22%2Bttype)%3Breturn%3B%7D%20function%20gv(id)%7Bvar%20el%3Ddocument.getElementById(id)%3Breturn%20el%3F(el.value%7C%7C%22%22)%3A%22%22%3B%7D%20var%20requester%3Dgv(m.req)%2CticketNum%3Dgv(m.num)%2CshortDesc%3Dgv(m.sd)%2Cdesc%3Dgv(m.desc)%2CreqNum%3Dm.rn%3Fgv(m.rn)%3A%22%22%3B%20var%20firstName%3D(%2Fw*%2F.exec(requester)%7C%7C%5B%22%22%5D)%5B0%5D%3B%20var%20link%3D%22https%3A%20var%20nl%3D%22%20%22%3B%20var%20body%3D%22Hi%20%22%2BfirstName%2B%22!%22%2Bnl%2Bnl%2B%22%3D%3D%3D%20EMAIL%20INTRO%20GOES%20HERE%20%3D%3D%3D%22%2Bnl%2Bnl%2B%22________________________________________%22%2Bnl%2Bnl%2BticketNum%2B%22%20%22%2BshortDesc%2Bnl%2Blink%2Bnl%2Bnl%2B%22Description%3A%22%2Bnl%2Bnl%2Bdesc%2Bnl%2B%22________________________________________%22%2Bnl%2Bnl%3B%20var%20subject%3Dttype%3D%3D%3D%22sctask%22%26%26reqNum%3F(reqNum%2B%22%20%2F%20%22%2BticketNum%2B%22%20%22%2BshortDesc)%3A(ticketNum%2B%22%20%22%2BshortDesc)%3B%20var%20mailto%3D%22mailto%3A%22%2Brequester%2B%22%3Fsubject%3D%22%2BencodeURIComponent(subject)%2B%22%26body%3D%22%2BencodeURIComponent(body)%3B%20if(mailto.length%3E%3D1800)%7Balert(%22Body%20truncated%20-%20use%20Copy%20Body%20Text.%22)%3Bmailto%3Dmailto.substring(0%2C1799)%3B%7D%20window.location.href%3Dmailto%3B%20%7D)()";
 
 function sw(id){
-  var TABS=['tm','em','bm','hl'];
+  var TABS=["tm","em","bm","hl"];
   var i=TABS.indexOf(id);
-  document.querySelectorAll('.tab').forEach(function(b,n){b.classList.toggle('on',n===i);});
-  document.querySelectorAll('.panel').forEach(function(p,n){p.classList.toggle('on',n===i);});
+  document.querySelectorAll(".tab").forEach(function(b,n){b.classList.toggle("on",n===i);});
+  document.querySelectorAll(".panel").forEach(function(p,n){p.classList.toggle("on",n===i);});
 }
-
 function tog(id){
-  document.getElementById(id).classList.toggle('open');
+  document.getElementById(id).classList.toggle("open");
 }
-
 function cpybm(w){
-  var s = w==='tm' ? TM_HREF : EM_HREF;
-  var btnId = w==='tm' ? 'tmbtn' : 'embtn';
+  var s=w==="tm"?TM_HREF:EM_HREF;
+  var btnId=w==="tm"?"tmbtn":"embtn";
   navigator.clipboard.writeText(s).then(function(){
     var b=document.getElementById(btnId);
-    b.textContent='Copied!'; b.classList.add('ok');
-    setTimeout(function(){b.textContent='Copy URL';b.classList.remove('ok');},2500);
+    b.textContent="Copied!";b.classList.add("ok");
+    setTimeout(function(){b.textContent="Copy URL";b.classList.remove("ok");},2500);
   });
 }
-
 function getAddr(){
-  var type=document.getElementById('etype').value;
-  return (type==='sctask'
-    ? document.getElementById('eaddr').value
-    : document.getElementById('eaddr2').value
-  ).trim();
+  var type=document.getElementById("etype").value;
+  return (type==="sctask"?document.getElementById("eaddr").value:document.getElementById("eaddr2").value).trim();
 }
-
 function uprev(){
-  var type=document.getElementById('etype').value;
-  var isSC=type==='sctask';
-  document.getElementById('reqrow').style.display=isSC?'':'none';
-  document.getElementById('reqrow2').style.display=isSC?'none':'';
+  var type=document.getElementById("etype").value;
+  var isSC=type==="sctask";
+  document.getElementById("reqrow").style.display=isSC?"":"none";
+  document.getElementById("reqrow2").style.display=isSC?"none":"";
   var addr=getAddr();
-  var fn=(addr.split('@')[0]||'').split('.')[0]||'there';
+  var fn=(addr.split("@")[0]||"").split(".")[0]||"there";
   fn=fn.charAt(0).toUpperCase()+fn.slice(1);
-  var fm={sctask:'sc_task.do',inc:'incident.do',chg:'change_request.do'};
-  var sid=document.getElementById('esid').value.trim();
-  var lk=sid?'https://umassmemorial.service-now.com/nav_to.do?uri='+fm[type]+'?sys_id='+sid:'(add sys_id for link)';
-  var num=document.getElementById('enum').value.trim();
-  var sd=document.getElementById('esd').value.trim();
-  var desc=document.getElementById('edesc').value.trim();
-  var msg=document.getElementById('emsg').value.trim()||'=== EMAIL INTRO GOES HERE ===';
-  var nl='\r\n';
-  var el=document.getElementById('eprev');
-  if(el) el.textContent='Hi '+fn+'!'+nl+nl+msg+nl+nl+'________________________________________'+nl+nl+num+' '+sd+nl+lk+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
+  var fm={sctask:"sc_task.do",inc:"incident.do",chg:"change_request.do"};
+  var sid=document.getElementById("esid").value.trim();
+  var lk=sid?"https://umassmemorial.service-now.com/nav_to.do?uri="+fm[type]+"?sys_id="+sid:"(add sys_id for link)";
+  var num=document.getElementById("enum").value.trim();
+  var sd=document.getElementById("esd").value.trim();
+  var desc=document.getElementById("edesc").value.trim();
+  var msg=document.getElementById("emsg").value.trim()||"=== EMAIL INTRO GOES HERE ===";
+  var nl="\r\n";
+  var el=document.getElementById("eprev");
+  if(el)el.textContent="Hi "+fn+"!"+nl+nl+msg+nl+nl+"________________________________________"+nl+nl+num+" "+sd+nl+lk+nl+nl+"Description:"+nl+nl+desc+nl+"________________________________________"+nl+nl;
 }
-
 function sendEmail(){
   var addr=getAddr();
-  if(!addr){alert('Enter a requester email.');return;}
-  var type=document.getElementById('etype').value;
-  var fn=(addr.split('@')[0]||'').split('.')[0]||'there';
+  if(!addr){alert("Enter a requester email.");return;}
+  var type=document.getElementById("etype").value;
+  var fn=(addr.split("@")[0]||"").split(".")[0]||"there";
   fn=fn.charAt(0).toUpperCase()+fn.slice(1);
-  var fm={sctask:'sc_task.do',inc:'incident.do',chg:'change_request.do'};
-  var sid=document.getElementById('esid').value.trim();
-  var lk=sid?'https://umassmemorial.service-now.com/nav_to.do?uri='+fm[type]+'?sys_id='+sid:'';
-  var num=document.getElementById('enum').value.trim();
-  var sd=document.getElementById('esd').value.trim();
-  var desc=document.getElementById('edesc').value.trim();
-  var req=document.getElementById('ereq').value.trim();
-  var msg=document.getElementById('emsg').value.trim()||'=== EMAIL INTRO GOES HERE ===';
-  var nl='\r\n';
-  var body='Hi '+fn+'!'+nl+nl+msg+nl+nl+'________________________________________'+nl+nl+num+' '+sd+(lk?nl+lk:'')+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
-  var subj=type==='sctask'&&req?(req+' / '+num+' '+sd):(num+' '+sd);
-  var ml='mailto:'+addr+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
-  if(ml.length>=1800){alert('Body may be truncated — use Copy Body Text.');ml=ml.substring(0,1799);}
+  var fm={sctask:"sc_task.do",inc:"incident.do",chg:"change_request.do"};
+  var sid=document.getElementById("esid").value.trim();
+  var lk=sid?"https://umassmemorial.service-now.com/nav_to.do?uri="+fm[type]+"?sys_id="+sid:"";
+  var num=document.getElementById("enum").value.trim();
+  var sd=document.getElementById("esd").value.trim();
+  var desc=document.getElementById("edesc").value.trim();
+  var req=document.getElementById("ereq").value.trim();
+  var msg=document.getElementById("emsg").value.trim()||"=== EMAIL INTRO GOES HERE ===";
+  var nl="\r\n";
+  var body="Hi "+fn+"!"+nl+nl+msg+nl+nl+"________________________________________"+nl+nl+num+" "+sd+(lk?nl+lk:"")+nl+nl+"Description:"+nl+nl+desc+nl+"________________________________________"+nl+nl;
+  var subj=type==="sctask"&&req?(req+" / "+num+" "+sd):(num+" "+sd);
+  var ml="mailto:"+addr+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);
+  if(ml.length>=1800){alert("Body may be truncated - use Copy Body Text.");ml=ml.substring(0,1799);}
   window.location.href=ml;
 }
-
 function copyBody(){
-  navigator.clipboard.writeText(document.getElementById('eprev').textContent)
-    .then(function(){alert('Copied!');});
+  navigator.clipboard.writeText(document.getElementById("eprev").textContent).then(function(){alert("Copied!");});
 }
 </script>
 </head>
 <body>
-
 <div class="header">
   <div class="logo">SNOW_HELPER</div>
   <div class="timer-wrap">
@@ -170,64 +158,42 @@ function copyBody(){
     <button class="tbtn" id="treset">Reset</button>
   </div>
 </div>
-
 <div class="body">
   <nav class="sidebar">
     <div class="s-label">Home</div>
-    <a class="s-link blue" href="https://umassmemorial.service-now.com" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ServiceNow Home</a>
-
+    <a class="s-link blue" href="https://umassmemorial.service-now.com" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ServiceNow Home</a>
     <div class="s-label">Users</div>
     <div class="dd-wrap" id="uddrop">
       <button class="dd-toggle" onclick="tog('uddrop')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
         Users <span class="dd-arrow">&#9662;</span>
       </button>
-      <div class="dd-menu">
-        <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=2e0e454edbddaa00cdb372fc0f9619c3^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE2e0e454edbddaa00cdb372fc0f9619c3^active=true^NQsys_class_name=sc_task^watch_listLIKE2e0e454edbddaa00cdb372fc0f9619c3^active=true^NQsys_class_name=change_request^watch_listLIKE2e0e454edbddaa00cdb372fc0f9619c3^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Gui Siqueira</a>
+      <div class="dd-menu"><a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=2e0e454edbddaa00cdb372fc0f9619c3^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=2e0e454edbddaa00cdb372fc0f9619c3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE2e0e454edbddaa00cdb372fc0f9619c3^active=true^NQsys_class_name=sc_task^watch_listLIKE2e0e454edbddaa00cdb372fc0f9619c3^active=true^NQsys_class_name=change_request^watch_listLIKE2e0e454edbddaa00cdb372fc0f9619c3^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Gui Siqueira</a>
         <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=542e894edbddaa00cdb372fc0f961903^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=542e894edbddaa00cdb372fc0f961903^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=542e894edbddaa00cdb372fc0f961903^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=542e894edbddaa00cdb372fc0f961903^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=542e894edbddaa00cdb372fc0f961903^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=542e894edbddaa00cdb372fc0f961903^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE542e894edbddaa00cdb372fc0f961903^active=true^NQsys_class_name=sc_task^watch_listLIKE542e894edbddaa00cdb372fc0f961903^active=true^NQsys_class_name=change_request^watch_listLIKE542e894edbddaa00cdb372fc0f961903^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Kelsy Hodde</a>
         <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=042e494edbddaa00cdb372fc0f9619cc^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=042e494edbddaa00cdb372fc0f9619cc^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=042e494edbddaa00cdb372fc0f9619cc^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=042e494edbddaa00cdb372fc0f9619cc^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=042e494edbddaa00cdb372fc0f9619cc^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=042e494edbddaa00cdb372fc0f9619cc^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE042e494edbddaa00cdb372fc0f9619cc^active=true^NQsys_class_name=sc_task^watch_listLIKE042e494edbddaa00cdb372fc0f9619cc^active=true^NQsys_class_name=change_request^watch_listLIKE042e494edbddaa00cdb372fc0f9619cc^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">David Fisher</a>
         <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=d53d7e2e1b237c94b26ba793604bcb04^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=d53d7e2e1b237c94b26ba793604bcb04^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=d53d7e2e1b237c94b26ba793604bcb04^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=d53d7e2e1b237c94b26ba793604bcb04^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=d53d7e2e1b237c94b26ba793604bcb04^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=d53d7e2e1b237c94b26ba793604bcb04^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKEd53d7e2e1b237c94b26ba793604bcb04^active=true^NQsys_class_name=sc_task^watch_listLIKEd53d7e2e1b237c94b26ba793604bcb04^active=true^NQsys_class_name=change_request^watch_listLIKEd53d7e2e1b237c94b26ba793604bcb04^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Andres Gil</a>
         <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=sc_task^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=change_request^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Darcy Needham</a>
         <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=7fd930b9c3db61d020b40b1599013147^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=7fd930b9c3db61d020b40b1599013147^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=7fd930b9c3db61d020b40b1599013147^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=7fd930b9c3db61d020b40b1599013147^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=7fd930b9c3db61d020b40b1599013147^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=7fd930b9c3db61d020b40b1599013147^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE7fd930b9c3db61d020b40b1599013147^active=true^NQsys_class_name=sc_task^watch_listLIKE7fd930b9c3db61d020b40b1599013147^active=true^NQsys_class_name=change_request^watch_listLIKE7fd930b9c3db61d020b40b1599013147^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Mike Hahn</a>
         <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=44fa3239c320ee5020b40b1599013137^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=44fa3239c320ee5020b40b1599013137^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=44fa3239c320ee5020b40b1599013137^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=44fa3239c320ee5020b40b1599013137^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=44fa3239c320ee5020b40b1599013137^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=44fa3239c320ee5020b40b1599013137^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE44fa3239c320ee5020b40b1599013137^active=true^NQsys_class_name=sc_task^watch_listLIKE44fa3239c320ee5020b40b1599013137^active=true^NQsys_class_name=change_request^watch_listLIKE44fa3239c320ee5020b40b1599013137^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Dwayne Baker</a>
-        <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=f4f9dc32470e26d02d355a5c346d438b^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=f4f9dc32470e26d02d355a5c346d438b^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=f4f9dc32470e26d02d355a5c346d438b^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=f4f9dc32470e26d02d355a5c346d438b^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=f4f9dc32470e26d02d355a5c346d438b^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=f4f9dc32470e26d02d355a5c346d438b^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKEf4f9dc32470e26d02d355a5c346d438b^active=true^NQsys_class_name=sc_task^watch_listLIKEf4f9dc32470e26d02d355a5c346d438b^active=true^NQsys_class_name=change_request^watch_listLIKEf4f9dc32470e26d02d355a5c346d438b^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Gina DeShazer</a>
-      </div>
+        <a class="dd-item" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=f4f9dc32470e26d02d355a5c346d438b^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=f4f9dc32470e26d02d355a5c346d438b^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=f4f9dc32470e26d02d355a5c346d438b^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=f4f9dc32470e26d02d355a5c346d438b^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=f4f9dc32470e26d02d355a5c346d438b^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=f4f9dc32470e26d02d355a5c346d438b^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKEf4f9dc32470e26d02d355a5c346d438b^active=true^NQsys_class_name=sc_task^watch_listLIKEf4f9dc32470e26d02d355a5c346d438b^active=true^NQsys_class_name=change_request^watch_listLIKEf4f9dc32470e26d02d355a5c346d438b^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">Gina DeShazer</a></div>
     </div>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=sc_task^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=change_request^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Darcy Needham</a>
-
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=change_request^assigned_to=5bcef6801bfb4950d96b531b234bcbb3^assignment_group=b0f881a7db916e00cdb372fc0f961973^stateNOT IN3,4,7,8,6^active=true^NQsys_class_name=incident^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=sc_task^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^assigned_to=^assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^state!=6^NQsys_class_name=sc_task^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=change_request^opened_by=5bcef6801bfb4950d96b531b234bcbb3^assignment_group!=b0f881a7db916e00cdb372fc0f961973^active=true^NQsys_class_name=incident^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=sc_task^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=change_request^watch_listLIKE5bcef6801bfb4950d96b531b234bcbb3^active=true^NQsys_class_name=change_request^ref_change_request.u_approval_groupLIKEb0f881a7db916e00cdb372fc0f961973^ORassignment_group=b0f881a7db916e00cdb372fc0f961973^state=-4^GROUPBYsys_class_name&ORDERBYorder&sysparm_first_row=1" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Darcy Needham</a>
     <div class="s-label">Queue Views</div>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^u_rankingBETWEEN1@5^NQsys_class_name=incident^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^u_rankingBETWEEN1@5^GROUPBYassigned_to&sysparm_first_row=1" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>Top 5</a>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=ref_change_request.start_dateRELATIVEGT@dayofweek@ago@14^assignment_group=b0f881a7db916e00cdb372fc0f961973^cmdb_ci=c6434271dbf27e00cdb372fc0f9619f8&sysparm_first_row=1" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Changes Past 2 Weeks</a>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^orderBETWEEN80@89^NQsys_class_name=incident^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^orderBETWEEN80@89" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>ASAP PC</a>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/sc_task_list.do?sysparm_query=assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^u_request_typeNOT INRoutine Maintenance,Optimization (%3C50 Hours),Optimization (%3E50 Hours)^GROUPBYassigned_to&sysparm_first_row=1" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 20v2M12 2v2"/></svg>Optimization</a>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/$vtb.do?sysparm_board=4926d2cd87c1e514d45285dd0ebb351e" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>EMH Tasks</a>
-    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Create Filter</a>
-
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^u_rankingBETWEEN1@5^NQsys_class_name=incident^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^u_rankingBETWEEN1@5^GROUPBYassigned_to&sysparm_first_row=1" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/><path d="M4 22h16"/></svg>Top 5</a>
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=ref_change_request.start_dateRELATIVEGT@dayofweek@ago@14^assignment_group=b0f881a7db916e00cdb372fc0f961973^cmdb_ci=c6434271dbf27e00cdb372fc0f9619f8&sysparm_first_row=1" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>Changes Past 2 Weeks</a>
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^orderBETWEEN80@89^NQsys_class_name=incident^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^orderBETWEEN80@89" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>ASAP PC</a>
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/sc_task_list.do?sysparm_query=assignment_group=b0f881a7db916e00cdb372fc0f961973^active=true^u_request_typeNOT INRoutine Maintenance,Optimization (%3C50 Hours),Optimization (%3E50 Hours)^GROUPBYassigned_to&sysparm_first_row=1" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>Optimization</a>
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/$vtb.do?sysparm_board=4926d2cd87c1e514d45285dd0ebb351e" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>EMH Tasks</a>
+    <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Create Filter</a>
     <div class="s-label">Tools</div>
-    <a class="s-link blue" href="https://umassmemorial.service-now.com/tcp" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Time Sheet Portal</a>
-    <a class="s-link blue" href="https://umassmemorial.service-now.com/com.glideapp.servicecatalog_category_view.do?v=1&sysparm_parent=b0fdfb01932002009ca87a75e57ffbe9&sysparm_cartless=true" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Change Catalog</a>
-    <a class="s-link blue" href="https://umassmemorial.service-now.com/label_list.do?sysparm_query=owner%3D5bcef6801bfb4950d96b531b234bcbb3%5EORowner%3D542e894edbddaa00cdb372fc0f961903&sysparm_view=" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>SNOW Tags</a>
-    <a class="s-link blue" href="https://galaxy.epic.com/Redirect.aspx?DocumentID=69551&PrefDocID=99067" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Epic INIs</a>
-    <a class="s-link blue" href="https://nova.epic.com/" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Nova Notes</a>
-    <a class="s-link blue" href="https://galaxy.epic.com/" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Epic Does What?</a>
-    <a class="s-link blue" href="https://sherlock.epic.com" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Sherlock</a>
-    <a class="s-link blue" href="http://ldmsdt16prd01/remote/frameset.aspx" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Land that Desk</a>
+    <a class="s-link blue" href="https://umassmemorial.service-now.com/tcp" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Time Sheet Portal</a>
+    <a class="s-link blue" href="https://umassmemorial.service-now.com/com.glideapp.servicecatalog_category_view.do?v=1&sysparm_parent=b0fdfb01932002009ca87a75e57ffbe9&sysparm_cartless=true" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Change Catalog</a>
+    <a class="s-link blue" href="https://umassmemorial.service-now.com/label_list.do?sysparm_query=owner%3D5bcef6801bfb4950d96b531b234bcbb3%5EORowner%3D542e894edbddaa00cdb372fc0f961903&sysparm_view=" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>SNOW Tags</a>
+    <a class="s-link blue" href="https://galaxy.epic.com/Redirect.aspx?DocumentID=69551&PrefDocID=99067" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Epic INIs</a>
+    <a class="s-link blue" href="https://nova.epic.com/" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>Nova Notes</a>
+    <a class="s-link blue" href="https://galaxy.epic.com/" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>Epic Does What?</a>
+    <a class="s-link blue" href="https://sherlock.epic.com" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Sherlock</a>
+    <a class="s-link blue" href="http://ldmsdt16prd01/remote/frameset.aspx" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Land that Desk</a>
   </nav>
 
   <div class="main">
@@ -237,7 +203,6 @@ function copyBody(){
       <button class="tab" onclick="sw('bm')">Install Bookmarklets</button>
       <button class="tab" onclick="sw('hl')">Order Legend</button>
     </div>
-
     <div class="panels">
 
       <div id="ptm" class="panel on">
@@ -248,10 +213,10 @@ function copyBody(){
         <div class="card">
           <div class="card-title">How to use</div>
           <ol style="padding-left:18px;font-size:.82rem;color:#94a3b8;line-height:2.2;">
-            <li>Go to <strong style="color:#e2e8f0">Install Bookmarklets</strong> tab — one-time setup</li>
+            <li>Go to <strong style="color:#e2e8f0">Install Bookmarklets</strong> tab for one-time setup</li>
             <li>Click any sidebar link to open a SNOW list view</li>
-            <li>Click your <strong style="color:#e2e8f0">TaskMaster</strong> bookmark — labels appear instantly</li>
-            <li>For email: open a ticket, click your <strong style="color:#e2e8f0">Email Boilerplate</strong> bookmark</li>
+            <li>Click your <strong style="color:#e2e8f0">TaskMaster</strong> bookmark to apply labels</li>
+            <li>For email: open a ticket, click <strong style="color:#e2e8f0">Email Boilerplate</strong> bookmark</li>
           </ol>
         </div>
       </div>
@@ -261,13 +226,7 @@ function copyBody(){
           <div class="card-title">Build email manually</div>
           <p style="font-size:.78rem;color:#64748b;margin-bottom:14px;">Or install the Email bookmarklet to auto-fill from any open SNOW ticket.</p>
           <div class="fgrid">
-            <div class="fg"><label>Ticket type</label>
-              <select id="etype" onchange="uprev()">
-                <option value="sctask">SC Task</option>
-                <option value="inc">Incident</option>
-                <option value="chg">Change Request</option>
-              </select>
-            </div>
+            <div class="fg"><label>Ticket type</label><select id="etype" onchange="uprev()"><option value="sctask">SC Task</option><option value="inc">Incident</option><option value="chg">Change Request</option></select></div>
             <div class="fg"><label>Ticket number</label><input id="enum" type="text" placeholder="SCTASK0012345" oninput="uprev()"></div>
           </div>
           <div class="fgrid" id="reqrow">
@@ -277,15 +236,11 @@ function copyBody(){
           <div class="fgrid" id="reqrow2" style="display:none">
             <div class="fg" style="grid-column:1/-1"><label>Requester email</label><input id="eaddr2" type="email" placeholder="user@umassmemorial.org" oninput="uprev()"></div>
           </div>
-          <div class="fgrid" style="grid-template-columns:1fr">
-            <div class="fg"><label>Short description</label><input id="esd" type="text" placeholder="Brief summary" oninput="uprev()"></div>
-          </div>
-          <div class="fgrid" style="grid-template-columns:1fr">
-            <div class="fg"><label>Description</label><textarea id="edesc" placeholder="Full ticket description..." oninput="uprev()"></textarea></div>
-          </div>
+          <div class="fgrid" style="grid-template-columns:1fr"><div class="fg"><label>Short description</label><input id="esd" type="text" placeholder="Brief summary" oninput="uprev()"></div></div>
+          <div class="fgrid" style="grid-template-columns:1fr"><div class="fg"><label>Description</label><textarea id="edesc" placeholder="Full ticket description..." oninput="uprev()"></textarea></div></div>
           <div class="fgrid">
             <div class="fg"><label>Sys ID (for link)</label><input id="esid" type="text" placeholder="32-char sys_id" oninput="uprev()"></div>
-            <div class="fg"><label>Custom intro message</label><input id="emsg" type="text" placeholder="Opening line..." oninput="uprev()"></div>
+            <div class="fg"><label>Custom intro</label><input id="emsg" type="text" placeholder="Opening line..." oninput="uprev()"></div>
           </div>
           <div style="font-size:.65rem;color:#475569;text-transform:uppercase;letter-spacing:.07em;">Preview</div>
           <div id="eprev">Fill in fields above...</div>
@@ -299,7 +254,7 @@ function copyBody(){
       <div id="pbm" class="panel">
         <div class="card" style="border-color:#a78bfa;background:rgba(167,139,250,.07);">
           <div class="card-title" style="color:#a78bfa;">One-time setup</div>
-          <p style="font-size:.8rem;color:#94a3b8;line-height:1.7;">Copy each URL below and manually create a bookmark in Chrome. Takes about 30 seconds each.</p>
+          <p style="font-size:.8rem;color:#94a3b8;line-height:1.7;">Copy each URL and manually create a bookmark in Chrome. Takes about 30 seconds each.</p>
         </div>
         <div class="bm-card">
           <div class="card-title">Bookmarklet 1 — TaskMaster</div>
@@ -334,7 +289,7 @@ function copyBody(){
       <div id="phl" class="panel">
         <div class="card">
           <div class="card-title">Order field values</div>
-          <p style="font-size:.78rem;color:#64748b;margin-bottom:14px;">Set the <strong style="color:#e2e8f0">Order</strong> field on any SNOW ticket to control how TaskMaster labels it.</p>
+          <p style="font-size:.78rem;color:#64748b;margin-bottom:14px;">Set the <strong style="color:#e2e8f0">Order</strong> field on a SNOW ticket to control how TaskMaster labels it.</p>
           <table class="htbl">
             <thead><tr><th>Order range</th><th>Label</th><th>Meaning</th></tr></thead>
             <tbody id="htbody"></tbody>
@@ -347,55 +302,50 @@ function copyBody(){
 </div>
 
 <script>
-document.getElementById('tmbox').textContent = TM_HREF;
-document.getElementById('embox').textContent = EM_HREF;
+document.getElementById("tmbox").textContent = TM_HREF;
+document.getElementById("embox").textContent = EM_HREF;
 
 var OM=[
-  {r:'(blank)',l:'Initial Action',b:'#7D3C98',c:'#7D3C98',bg:'#2d1f3d',m:'New — needs first touch'},
-  {r:'0-9',    l:'Update Needed', b:'#856404',c:'#fbbf24',bg:'#2d2008',m:'Awaiting update or response'},
-  {r:'10-19',  l:'Quick Win',     b:'#D35400',c:'#fb923c',bg:'#2d1508',m:'Fast resolution possible'},
-  {r:'20-29',  l:'Prioritize',    b:'#004085',c:'#60a5fa',bg:'#0f1f3d',m:'High priority, work next'},
-  {r:'30-39',  l:'Discuss',       b:'#94a3b8',c:'#94a3b8',bg:'#1e2a3a',m:'Needs team discussion'},
-  {r:'40-49',  l:'Scheduled',     b:'#155724',c:'#4ade80',bg:'#0f2d1a',m:'Work is scheduled'},
-  {r:'50-59',  l:'Blocked',       b:'#721c24',c:'#f87171',bg:'#2d0f12',m:'Waiting on external party'},
-  {r:'60-69',  l:'Deferred',      b:'#475569',c:'#94a3b8',bg:'#1a1f2e',m:'Deprioritized'},
-  {r:'70-79',  l:'DC Move',       b:'#BB0086',c:'#f0abfc',bg:'#2d0826',m:'Data center migration'},
-  {r:'80-89',  l:'ASAP PC',       b:'#008970',c:'#34d399',bg:'#0a2d25',m:'ASAP Partnership Council'}
+  {r:"(blank)",l:"Initial Action",b:"#7D3C98",c:"#7D3C98",bg:"#2d1f3d",m:"New - needs first touch"},
+  {r:"0-9",    l:"Update Needed", b:"#856404",c:"#fbbf24",bg:"#2d2008",m:"Awaiting update or response"},
+  {r:"10-19",  l:"Quick Win",     b:"#D35400",c:"#fb923c",bg:"#2d1508",m:"Fast resolution possible"},
+  {r:"20-29",  l:"Prioritize",    b:"#004085",c:"#60a5fa",bg:"#0f1f3d",m:"High priority, work next"},
+  {r:"30-39",  l:"Discuss",       b:"#94a3b8",c:"#94a3b8",bg:"#1e2a3a",m:"Needs team discussion"},
+  {r:"40-49",  l:"Scheduled",     b:"#155724",c:"#4ade80",bg:"#0f2d1a",m:"Work is scheduled"},
+  {r:"50-59",  l:"Blocked",       b:"#721c24",c:"#f87171",bg:"#2d0f12",m:"Waiting on external party"},
+  {r:"60-69",  l:"Deferred",      b:"#475569",c:"#94a3b8",bg:"#1a1f2e",m:"Deprioritized"},
+  {r:"70-79",  l:"DC Move",       b:"#BB0086",c:"#f0abfc",bg:"#2d0826",m:"Data center migration"},
+  {r:"80-89",  l:"ASAP PC",       b:"#008970",c:"#34d399",bg:"#0a2d25",m:"ASAP Partnership Council"}
 ];
 
-(function renderLegend(){
-  var g=document.getElementById('lgrid'), tb=document.getElementById('htbody');
+(function(){
+  var g=document.getElementById("lgrid"),tb=document.getElementById("htbody");
   OM.forEach(function(o){
-    var d=document.createElement('div'); d.className='litem';
-    d.style.borderLeftColor=o.b; d.style.color=o.c; d.style.background=o.bg;
+    var d=document.createElement("div");d.className="litem";
+    d.style.borderLeftColor=o.b;d.style.color=o.c;d.style.background=o.bg;
     d.innerHTML='<span class="lcode">'+o.r+'</span><span style="font-weight:500">['+o.l+']</span>';
     g.appendChild(d);
-    var tr=document.createElement('tr');
+    var tr=document.createElement("tr");
     tr.innerHTML='<td><span class="ctag">'+o.r+'</span></td><td style="color:'+o.c+';font-weight:500">['+o.l+']</td><td style="color:#64748b">'+o.m+'</td>';
     tb.appendChild(tr);
   });
 })();
 
-document.addEventListener('click',function(e){
-  if(!e.target.closest('.dd-wrap'))
-    document.querySelectorAll('.dd-wrap.open').forEach(function(d){d.classList.remove('open');});
+document.addEventListener("click",function(e){
+  if(!e.target.closest(".dd-wrap"))
+    document.querySelectorAll(".dd-wrap.open").forEach(function(d){d.classList.remove("open");});
 });
 
-var rem=25*60, iv=null, run=false;
+var rem=25*60,iv=null,run=false;
 function td(){
-  var m=Math.floor(rem/60).toString().padStart(2,'0');
-  var s=(rem%60).toString().padStart(2,'0');
-  var el=document.getElementById('tdisp');
-  el.textContent=m+':'+s;
-  el.className=run?(rem<=60?'urg':'run'):'';
+  var m=Math.floor(rem/60).toString().padStart(2,"0"),s=(rem%60).toString().padStart(2,"0");
+  var el=document.getElementById("tdisp");
+  el.textContent=m+":"+s;
+  el.className=run?(rem<=60?"urg":"run"):"";
 }
-document.getElementById('tstart').onclick=function(){
-  if(run)return; run=true;
-  iv=setInterval(function(){rem--; if(rem<=0){clearInterval(iv);run=false;rem=0;} td();},1000);
-  td();
-};
-document.getElementById('tpause').onclick=function(){clearInterval(iv);run=false;td();};
-document.getElementById('treset').onclick=function(){clearInterval(iv);run=false;rem=25*60;td();};
+document.getElementById("tstart").onclick=function(){if(run)return;run=true;iv=setInterval(function(){rem--;if(rem<=0){clearInterval(iv);run=false;rem=0;}td();},1000);td();};
+document.getElementById("tpause").onclick=function(){clearInterval(iv);run=false;td();};
+document.getElementById("treset").onclick=function(){clearInterval(iv);run=false;rem=25*60;td();};
 </script>
 </body>
 </html>
