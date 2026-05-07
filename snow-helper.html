@@ -107,6 +107,7 @@ button.act.primary:hover{background:#8b5cf6;border-color:#8b5cf6;}
 ::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:4px;}
 </style>
 
+
 <script>
 function sw(id){
   var TABS=['tm','em','bm','hl'],PANELS=['ptm','pem','pbm','phl'];
@@ -114,6 +115,55 @@ function sw(id){
   document.querySelectorAll('.tab').forEach(function(b,n){b.classList.toggle('on',n===i);});
   document.querySelectorAll('.panel').forEach(function(p,n){p.classList.toggle('on',n===i);});
 }
+function tog(id){document.getElementById(id).classList.toggle('open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.dd-wrap'))document.querySelectorAll('.dd-wrap.open').forEach(function(d){d.classList.remove('open');});});
+function cpybm(w){
+  var s=w==='tm'?TM_HREF:EM_HREF,id=w==='tm'?'tmbtn':'embtn';
+  navigator.clipboard.writeText(s).then(function(){
+    var b=document.getElementById(id);b.textContent='Copied!';b.classList.add('ok');
+    setTimeout(function(){b.textContent='Copy URL';b.classList.remove('ok');},2500);
+  });
+}
+function getAddr(){return(document.getElementById('etype').value==='sctask'?document.getElementById('eaddr').value:document.getElementById('eaddr2').value).trim();}
+function uprev(){
+  var type=document.getElementById('etype').value,isSC=type==='sctask';
+  document.getElementById('reqrow').style.display=isSC?'':'none';
+  document.getElementById('reqrow2').style.display=isSC?'none':'';
+  var addr=getAddr(),fn=(addr.split('@')[0]||'').split('.')[0]||'there';
+  fn=fn.charAt(0).toUpperCase()+fn.slice(1);
+  var fm={sctask:'sc_task.do',inc:'incident.do',chg:'change_request.do'};
+  var sid=document.getElementById('esid').value.trim();
+  var lk=sid?'https://umassmemorial.service-now.com/nav_to.do?uri='+fm[type]+'?sys_id='+sid:'(add sys_id for link)';
+  var num=document.getElementById('enum').value.trim();
+  var sd=document.getElementById('esd').value.trim();
+  var desc=document.getElementById('edesc').value.trim();
+  var msg=document.getElementById('emsg').value.trim()||'=== EMAIL INTRO GOES HERE ===';
+  var nl='
+';
+  var el=document.getElementById('eprev');
+  if(el)el.textContent='Hi '+fn+'!'+nl+nl+msg+nl+nl+'________________________________________'+nl+nl+num+' '+sd+nl+lk+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
+}
+function sendEmail(){
+  var addr=getAddr();if(!addr){alert('Enter a requester email.');return;}
+  var type=document.getElementById('etype').value;
+  var fn=(addr.split('@')[0]||'').split('.')[0]||'there';fn=fn.charAt(0).toUpperCase()+fn.slice(1);
+  var fm={sctask:'sc_task.do',inc:'incident.do',chg:'change_request.do'};
+  var sid=document.getElementById('esid').value.trim();
+  var lk=sid?'https://umassmemorial.service-now.com/nav_to.do?uri='+fm[type]+'?sys_id='+sid:'';
+  var num=document.getElementById('enum').value.trim();
+  var sd=document.getElementById('esd').value.trim();
+  var desc=document.getElementById('edesc').value.trim();
+  var req=document.getElementById('ereq').value.trim();
+  var msg=document.getElementById('emsg').value.trim()||'=== EMAIL INTRO GOES HERE ===';
+  var nl='
+';
+  var body='Hi '+fn+'!'+nl+nl+msg+nl+nl+'________________________________________'+nl+nl+num+' '+sd+(lk?nl+lk:'')+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
+  var subj=type==='sctask'&&req?(req+' / '+num+' '+sd):(num+' '+sd);
+  var ml='mailto:'+addr+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  if(ml.length>=1800){alert('Body may be truncated — use Copy Body Text.');ml=ml.substring(0,1799);}
+  window.location.href=ml;
+}
+function copyBody(){navigator.clipboard.writeText(document.getElementById('eprev').textContent).then(function(){alert('Copied!');});}
 </script>
 </head>
 <body>
@@ -213,6 +263,10 @@ function sw(id){
     <a class="s-link blue" href="http://ldmsdt16prd01/remote/frameset.aspx" target="_blank">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       Land that Desk
+    </a>
+    <a class="s-link blue" href="https://umassmemorial.service-now.com/label_list.do?sysparm_query=owner%3D5bcef6801bfb4950d96b531b234bcbb3%5EORowner%3D542e894edbddaa00cdb372fc0f961903&sysparm_view=" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      SNOW Tags
     </a>
   </nav>
 
@@ -372,58 +426,6 @@ function renderLegend(){
   });
 }
 
-
-function tog(id){document.getElementById(id).classList.toggle('open');}
-document.addEventListener('click',function(e){if(!e.target.closest('.dd-wrap'))document.querySelectorAll('.dd-wrap.open').forEach(function(d){d.classList.remove('open');});});
-
-function getAddr(){return(document.getElementById('etype').value==='sctask'?document.getElementById('eaddr').value:document.getElementById('eaddr2').value).trim();}
-function uprev(){
-  var type=document.getElementById('etype').value,isSC=type==='sctask';
-  document.getElementById('reqrow').style.display=isSC?'':'none';
-  document.getElementById('reqrow2').style.display=isSC?'none':'';
-  var addr=getAddr(),fn=(addr.split('@')[0]||'').split('.')[0]||'there';
-  fn=fn.charAt(0).toUpperCase()+fn.slice(1);
-  var fm={sctask:'sc_task.do',inc:'incident.do',chg:'change_request.do'};
-  var sid=document.getElementById('esid').value.trim();
-  var lk=sid?'https://umassmemorial.service-now.com/nav_to.do?uri='+fm[type]+'?sys_id='+sid:'(add sys_id for link)';
-  var num=document.getElementById('enum').value.trim();
-  var sd=document.getElementById('esd').value.trim();
-  var desc=document.getElementById('edesc').value.trim();
-  var msg=document.getElementById('emsg').value.trim()||'=== EMAIL INTRO GOES HERE ===';
-  var nl='
-';
-  document.getElementById('eprev').textContent='Hi '+fn+'!'+nl+nl+msg+nl+nl+'________________________________________'+nl+nl+num+' '+sd+nl+lk+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
-}
-function sendEmail(){
-  var addr=getAddr();if(!addr){alert('Enter a requester email.');return;}
-  var type=document.getElementById('etype').value;
-  var fn=(addr.split('@')[0]||'').split('.')[0]||'there';fn=fn.charAt(0).toUpperCase()+fn.slice(1);
-  var fm={sctask:'sc_task.do',inc:'incident.do',chg:'change_request.do'};
-  var sid=document.getElementById('esid').value.trim();
-  var lk=sid?'https://umassmemorial.service-now.com/nav_to.do?uri='+fm[type]+'?sys_id='+sid:'';
-  var num=document.getElementById('enum').value.trim();
-  var sd=document.getElementById('esd').value.trim();
-  var desc=document.getElementById('edesc').value.trim();
-  var req=document.getElementById('ereq').value.trim();
-  var msg=document.getElementById('emsg').value.trim()||'=== EMAIL INTRO GOES HERE ===';
-  var nl='
-';
-  var body='Hi '+fn+'!'+nl+nl+msg+nl+nl+'________________________________________'+nl+nl+num+' '+sd+(lk?nl+lk:'')+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
-  var subj=type==='sctask'&&req?(req+' / '+num+' '+sd):(num+' '+sd);
-  var ml='mailto:'+addr+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
-  if(ml.length>=1800){alert('Body may be truncated — use Copy Body Text.');ml=ml.substring(0,1799);}
-  window.location.href=ml;
-}
-function copyBody(){navigator.clipboard.writeText(document.getElementById('eprev').textContent).then(function(){alert('Copied!');});}
-
-function cpybm(w){
-  var s=w==='tm'?TM_HREF:EM_HREF,id=w==='tm'?'tmbtn':'embtn';
-  navigator.clipboard.writeText(s).then(function(){
-    var b=document.getElementById(id);b.textContent='Copied!';b.classList.add('ok');
-    setTimeout(function(){b.textContent='Copy URL';b.classList.remove('ok');},2500);
-  });
-}
-
 var rem=25*60,iv=null,run=false;
 function td(){
   var m=Math.floor(rem/60).toString().padStart(2,'0'),s=(rem%60).toString().padStart(2,'0');
@@ -431,8 +433,6 @@ function td(){
   el.className=run?(rem<=60?'urg':'run'):'';
 }
 document.getElementById('tstart').onclick=function(){if(run)return;run=true;iv=setInterval(function(){rem--;if(rem<=0){clearInterval(iv);run=false;rem=0;}td();},1000);td();};
-document.getElementById('tpause').onclick=function(){clearInterval(iv);run=false;td();};
-document.getElementById('treset').onclick=function(){clearInterval(iv);run=false;rem=25*60;td();};
 
 renderLegend();
 uprev();
