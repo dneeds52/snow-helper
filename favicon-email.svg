@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#0f0f1a"/>
+  <!-- Envelope body -->
+  <rect x="4" y="9" width="24" height="16" rx="2" fill="none" stroke="#a78bfa" stroke-width="2"/>
+  <!-- Envelope flap V -->
+  <polyline points="4,9 16,19 28,9" fill="none" stroke="#a78bfa" stroke-width="2"/>
+  <!-- Sparkle dot -->
+  <circle cx="25" cy="8" r="3" fill="#67e8f9"/>
+</svg>
