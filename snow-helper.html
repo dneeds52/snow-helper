@@ -116,6 +116,15 @@ button.act.primary:hover{background:#8b5cf6;}
 .tab.on{color:#a78bfa;border-bottom-color:#a78bfa;}
 .tab:hover:not(.on){color:#e2e8f0;}
 .panel{display:none;}.panel.on{display:block;}
+
+.pg-layout{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start;}
+.pg-side{position:sticky;top:0;}
+.pg-side .card{margin-bottom:0;}
+@media(max-width:900px){.pg-layout{grid-template-columns:1fr;}}
+
+.lgrid-sm{display:flex;flex-direction:column;gap:5px;}
+.lgrid-sm .litem{padding:6px 8px;font-size:.72rem;}
+.lgrid-sm .lcode{min-width:30px;font-size:.65rem;}
 </style>
 <script>
 
@@ -269,7 +278,9 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
     </div>
     <div class="content">
       <div class="panel on" id="panel-pg">
-        <div class="card">
+        <div class="pg-layout">
+          <div class="pg-main">
+            <div class="card">
             <div class="card-title">Triage Process Guide</div>
             <p style="font-size:.78rem;color:#64748b;margin-bottom:16px;">The process for triaging ServiceNow tickets using the SNOW Helper.</p>
 
@@ -401,6 +412,15 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
             </div>
 
           </div>
+          </div>
+          <div class="pg-side">
+            <div class="card">
+              <div class="card-title">&#127381; TaskMaster</div>
+              <div class="lgrid-sm" id="lgrid-side"></div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
       <div class="panel" id="panel-tm">
         <div class="card">
@@ -472,13 +492,17 @@ var OM=[
   {r:"80-89",  l:"ASAP PC",       b:"#008970",c:"#34d399",bg:"#0a2d25",m:"ASAP Partnership Council"}
 ];
 (function(){
-  var g=document.getElementById("lgrid");
-  OM.forEach(function(o){
-    var d=document.createElement("div");d.className="litem";
-    d.style.borderLeftColor=o.b;d.style.color=o.c;d.style.background=o.bg;
-    d.innerHTML='<span class="lcode">'+o.r+'</span><div><div style="font-weight:500">['+o.l+']</div><div style="font-size:.68rem;opacity:.7;margin-top:2px;color:'+o.c+'">'+o.m+'</div></div>';
-    g.appendChild(d);
-  });
+  function fillGrid(g){
+    if(!g)return;
+    OM.forEach(function(o){
+      var d=document.createElement("div");d.className="litem";
+      d.style.borderLeftColor=o.b;d.style.color=o.c;d.style.background=o.bg;
+      d.innerHTML='<span class="lcode">'+o.r+'</span><div><div style="font-weight:500">['+o.l+']</div><div style="font-size:.68rem;opacity:.7;margin-top:2px;color:'+o.c+'">'+o.m+'</div></div>';
+      g.appendChild(d);
+    });
+  }
+  fillGrid(document.getElementById("lgrid"));
+  fillGrid(document.getElementById("lgrid-side"));
 })();
 // No auto-close for sidebar accordions - they stay open until manually clicked
 var rem=25*60,iv=null,run=false;
