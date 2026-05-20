@@ -119,7 +119,7 @@ button.act.primary:hover{background:#8b5cf6;}
 .proc-bullets li{margin-bottom:2px;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:4px;}
 
-.phrase{font-family:'Inter',sans-serif;font-size:.78rem;font-weight:500;color:#a78bfa;opacity:.85;font-style:italic;margin-left:12px;letter-spacing:.01em;}
+.phrase{font-family:'Inter',sans-serif;font-size:.78rem;font-weight:500;color:#f59e0b;opacity:.95;font-style:italic;margin-left:12px;letter-spacing:.01em;}
 </style>
 <script>
 
@@ -268,25 +268,13 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
         </div>
         <div class="psec-body">
           <div class="card">
-            <div class="card-title">Color coding legend</div>
-            <div class="lgrid" id="lgrid"></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Order field values</div>
-            <p style="font-size:.78rem;color:#64748b;margin-bottom:14px;">Set the <strong style="color:#e2e8f0">Order</strong> field on a SNOW ticket to control how TaskMaster labels it.</p>
+            <div class="card-title">Color coding &amp; Order values</div>
+            <p style="font-size:.78rem;color:#64748b;margin-bottom:12px;">Set the <strong style="color:#e2e8f0">Order</strong> field first digit to control how TaskMaster labels each ticket.</p>
+            <div class="lgrid" id="lgrid" style="margin-bottom:16px;"></div>
             <table class="htbl">
               <thead><tr><th>Order range</th><th>Label</th><th>Meaning</th></tr></thead>
               <tbody id="htbody"></tbody>
             </table>
-          </div>
-          <div class="card">
-            <div class="card-title">How to use</div>
-            <ol style="padding-left:18px;font-size:.82rem;color:#94a3b8;line-height:2.2;">
-              <li>Go to <strong style="color:#e2e8f0">Install Bookmarklets</strong> section for one-time setup</li>
-              <li>Click any sidebar link to open a SNOW list view</li>
-              <li>Click your <strong style="color:#e2e8f0">TaskMaster</strong> bookmark to apply labels</li>
-              <li>For email: open a ticket, click <strong style="color:#e2e8f0">Email Boilerplate</strong> bookmark</li>
-            </ol>
           </div>
         </div>
       </div>
