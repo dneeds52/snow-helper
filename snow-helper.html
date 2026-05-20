@@ -86,6 +86,25 @@ a.s-link.purple:hover .remove-user{display:block;}
 .acc-wrap.open .acc-arrow{transform:rotate(180deg);}
 .acc-body{display:none;}
 .acc-wrap.open .acc-body{display:block;}
+
+.process-section{margin-bottom:8px;border:1px solid #2a2a3e;border-radius:8px;overflow:hidden;}
+.process-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;background:#12121e;transition:background .15s;}
+.process-header:hover{background:#1a1a2e;}
+.process-icon{width:24px;height:24px;border-radius:50%;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.process-title{font-size:.82rem;font-weight:600;flex:1;}
+.process-arrow{font-size:.65rem;color:#475569;transition:transform .2s;}
+.process-section.open .process-arrow{transform:rotate(180deg);}
+.process-body{display:none;padding:12px 14px;border-top:1px solid #2a2a3e;background:#0f0f1a;}
+.process-section.open .process-body{display:block;}
+.proc-list{padding-left:18px;font-size:.8rem;color:#cbd5e1;line-height:2;}
+.proc-branch{margin:6px 0 6px 8px;display:flex;flex-direction:column;gap:4px;}
+.proc-yes,.proc-no{font-size:.78rem;color:#94a3b8;display:flex;align-items:baseline;gap:6px;}
+.branch-label{font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:10px;flex-shrink:0;}
+.branch-label.yes{background:rgba(16,185,129,.2);color:#34d399;}
+.branch-label.no{background:rgba(100,116,139,.2);color:#94a3b8;}
+.proc-note{font-size:.78rem;color:#94a3b8;margin-top:8px;line-height:1.7;}
+.proc-bullets{padding-left:16px;margin-top:4px;}
+.proc-bullets li{margin-bottom:2px;}
 </style>
 <script>
 // ============================================================
@@ -144,8 +163,11 @@ function toggleAcc(id){
 // Called by onclick on each tab button.
 // Toggles the "on" class on both the tab buttons and panels.
 // TABS array must match the order of .tab buttons in the HTML.
+function toggleProcess(id){
+  document.getElementById(id).classList.toggle("open");
+}
 function sw(id){
-  var TABS=["tm","em","bm","hl"];
+  var TABS=["tm","em","bm","hl","pg"];
   var i=TABS.indexOf(id);
   document.querySelectorAll(".tab").forEach(function(b,n){b.classList.toggle("on",n===i);});
   document.querySelectorAll(".panel").forEach(function(p,n){p.classList.toggle("on",n===i);});
@@ -503,6 +525,7 @@ function copyBody(){
       <button class="tab" onclick="sw('em')">Email Boilerplate</button>
       <button class="tab" onclick="sw('bm')">Install Bookmarklets</button>
       <button class="tab" onclick="sw('hl')">Order Legend</button>
+      <button class="tab" onclick="sw('pg')">Process Guide</button>
     </div>
     <div class="panels">
 
@@ -603,6 +626,141 @@ function copyBody(){
         </div>
       </div>
 
+
+      <div id="ppg" class="panel">
+        <div class="card">
+          <div class="card-title">Triage Process Guide</div>
+          <p style="font-size:.78rem;color:#64748b;margin-bottom:16px;">The process for triaging ServiceNow tickets using the SNOW Helper.</p>
+
+          <div class="process-section open" id="ps-assign">
+            <div class="process-header" onclick="toggleProcess('ps-assign')">
+              <span class="process-icon" style="background:#2d1f3d;color:#a78bfa;">1</span>
+              <span class="process-title" style="color:#a78bfa;">Assignment</span>
+              <span class="process-arrow">&#9662;</span>
+            </div>
+            <div class="process-body">
+              <ol class="proc-list">
+                <li>Review Pending Assignment board items</li>
+                <li>Item need assignment?
+                  <div class="proc-branch">
+                    <div class="proc-yes"><span class="branch-label yes">Yes</span>Assign ticket</div>
+                    <div class="proc-no"><span class="branch-label no">No</span>Go to Initial Action</div>
+                  </div>
+                </li>
+              </ol>
+              <div class="proc-note"><strong style="color:#e2e8f0;">Requires immediate self-assignment:</strong>
+                <ul class="proc-bullets">
+                  <li>Tickets related to a Production issue/outage</li>
+                  <li>Tickets submitted by a VIP</li>
+                  <li>High priority or time sensitive tickets</li>
+                  <li>Tickets that would not be picked up in time due to team members being out</li>
+                </ul>
+              </div>
+              <div class="proc-note" style="margin-top:10px;"><strong style="color:#e2e8f0;">Routine tickets (no immediate self-assignment needed):</strong>
+                <ul class="proc-bullets">
+                  <li>Tickets that are not high priority or time sensitive</li>
+                  <li>Tickets with an obvious team assignee (if that person is in the office)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-section" id="ps-initial">
+            <div class="process-header" onclick="toggleProcess('ps-initial')">
+              <span class="process-icon" style="background:#E8DAEF;color:#7D3C98;">2</span>
+              <span class="process-title" style="color:#a78bfa;">Initial Action</span>
+              <span class="process-arrow">&#9662;</span>
+            </div>
+            <div class="process-body">
+              <ol class="proc-list">
+                <li>Review Initial Action board items</li>
+                <li>Items with initial action needed?
+                  <div class="proc-branch">
+                    <div class="proc-yes"><span class="branch-label yes">Yes</span>Complete Initial Action</div>
+                    <div class="proc-no"><span class="branch-label no">No</span>Go to Status Update</div>
+                  </div>
+                </li>
+              </ol>
+              <div class="proc-note">Take appropriate action on <strong style="color:#e2e8f0;">all</strong> initial action needed items before proceeding.</div>
+            </div>
+          </div>
+
+          <div class="process-section" id="ps-status">
+            <div class="process-header" onclick="toggleProcess('ps-status')">
+              <span class="process-icon" style="background:#0f1f3d;color:#60a5fa;">3</span>
+              <span class="process-title" style="color:#a78bfa;">Status Update</span>
+              <span class="process-arrow">&#9662;</span>
+            </div>
+            <div class="process-body">
+              <ol class="proc-list">
+                <li>Review board items (top to bottom)</li>
+                <li>All statuses current?
+                  <div class="proc-branch">
+                    <div class="proc-yes"><span class="branch-label yes">Yes</span>Go to Quick Wins</div>
+                    <div class="proc-no"><span class="branch-label no">No</span>Update Status</div>
+                  </div>
+                </li>
+              </ol>
+              <div class="proc-note">Review <strong style="color:#e2e8f0;">ALL</strong> items top to bottom. Update immediately before proceeding.
+                <ul class="proc-bullets">
+                  <li>Verify Short Description is still accurate/applicable</li>
+                  <li>Verify most recent Work Note reflects current status and documents the most recent non-trivial activity</li>
+                  <li>Verify item is in the correct Lane (primarily driven by incident state)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-section" id="ps-quickwin">
+            <div class="process-header" onclick="toggleProcess('ps-quickwin')">
+              <span class="process-icon" style="background:#2d1508;color:#fb923c;">4</span>
+              <span class="process-title" style="color:#a78bfa;">Quick Win</span>
+              <span class="process-arrow">&#9662;</span>
+            </div>
+            <div class="process-body">
+              <ol class="proc-list">
+                <li>Review board items (top to bottom)</li>
+                <li>Quick Wins exist?
+                  <div class="proc-branch">
+                    <div class="proc-yes"><span class="branch-label yes">Yes</span>Take action</div>
+                    <div class="proc-no"><span class="branch-label no">No</span>Go to Prioritize</div>
+                  </div>
+                </li>
+              </ol>
+              <div class="proc-note">If a low effort action <strong style="color:#e2e8f0;">(15 minutes or less)</strong> can be taken to drive activity on an item, take it.<br><br>
+                <em style="color:#475569;">Note: order/priority does not matter. Taking low effort action on ANY item will help drive individual items to closure.</em>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-section" id="ps-prioritize">
+            <div class="process-header" onclick="toggleProcess('ps-prioritize')">
+              <span class="process-icon" style="background:#0f1f3d;color:#60a5fa;">5</span>
+              <span class="process-title" style="color:#a78bfa;">Prioritize</span>
+              <span class="process-arrow">&#9662;</span>
+            </div>
+            <div class="process-body">
+              <ol class="proc-list">
+                <li>Review board items (by priority)</li>
+                <li>High/highest priority?
+                  <div class="proc-branch">
+                    <div class="proc-yes"><span class="branch-label yes">Yes</span>Spend 30 minutes dedicated on task</div>
+                  </div>
+                </li>
+              </ol>
+              <div class="proc-note">Switch gears to higher effort activity. Prioritize using your best judgement:
+                <ul class="proc-bullets">
+                  <li>Items with a missed SLA should be prioritized</li>
+                  <li>Items in danger of missing an SLA should be prioritized</li>
+                  <li>Items that require assistance, feedback, or involvement from someone else should be prioritized</li>
+                  <li>Most of your time should be spent on prioritized activities</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 </div>
