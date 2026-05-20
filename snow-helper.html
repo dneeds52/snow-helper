@@ -52,14 +52,6 @@ a.s-link.purple:hover .remove-user{display:block;}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 .content{flex:1;overflow-y:auto;padding:20px;}
 /* PAGE SECTIONS */
-.psec{border:1px solid #2a2a3e;border-radius:10px;margin-bottom:12px;overflow:hidden;}
-.psec-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#1a1a2e;cursor:pointer;transition:background .15s;}
-.psec-hdr:hover{background:#242438;}
-.psec-title{font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;letter-spacing:.08em;color:#67e8f9;text-transform:uppercase;}
-.psec-arrow{font-size:.65rem;color:#475569;transition:transform .2s;}
-.psec.open .psec-arrow{transform:rotate(180deg);}
-.psec-body{display:none;padding:16px 18px;background:#0f0f1a;}
-.psec.open .psec-body{display:block;}
 /* CARDS */
 .card{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:10px;padding:16px 18px;margin-bottom:14px;}
 .card:last-child{margin-bottom:0;}
@@ -118,6 +110,12 @@ button.act.primary:hover{background:#8b5cf6;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:4px;}
 
 .phrase{font-family:'Inter',sans-serif;font-size:.78rem;font-weight:500;color:#f59e0b;opacity:.95;font-style:italic;margin-left:12px;letter-spacing:.01em;}
+
+.tabs{display:flex;border-bottom:1px solid #2a2a3e;background:#1a1a2e;flex-shrink:0;padding:0 16px;}
+.tab{padding:10px 16px;font-size:.8rem;font-weight:500;color:#64748b;background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;}
+.tab.on{color:#a78bfa;border-bottom-color:#a78bfa;}
+.tab:hover:not(.on){color:#e2e8f0;}
+.panel{display:none;}.panel.on{display:block;}
 </style>
 <script>
 
@@ -130,6 +128,13 @@ var TM_HREF   = "javascript:(function()%7Bif(window.location.href.indexOf(%22tas
 var EM_HREF   = "javascript:(function()%7Bvar%20numEl%3Ddocument.getElementById(%22sys_readonly.sc_task.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.incident.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.change_request.number%22)%3Bif(!numEl)%7Balert(%22Open%20a%20specific%20SNOW%20ticket%20page%20first.%22)%3Breturn%3B%7Dvar%20num%3DnumEl.value%3Bvar%20ttype%3D%2F%5Ba-zA-Z%5D%2B%2Fg.exec(num)%5B0%5D.toLowerCase()%3Bvar%20sysId%3D(document.getElementById(%22sys_uniqueValue%22)%7C%7C%7B%7D).value%7C%7C%22%22%3Bvar%20fm%3D%7Bsctask%3A%7Bfile%3A%22sc_task.do%22%2Creq%3A%22sc_task.request.requested_for_label%22%2Cnum%3A%22sys_readonly.sc_task.number%22%2Csd%3A%22sc_task.short_description%22%2Cdesc%3A%22sc_task.description%22%2Crn%3A%22sc_task.request_label%22%7D%2Cinc%3A%7Bfile%3A%22incident.do%22%2Creq%3A%22sys_display.incident.caller_id%22%2Cnum%3A%22sys_readonly.incident.number%22%2Csd%3A%22incident.short_description%22%2Cdesc%3A%22incident.description%22%7D%2Cchg%3A%7Bfile%3A%22change_request.do%22%2Creq%3A%22sys_display.change_request.requested_by%22%2Cnum%3A%22sys_readonly.change_request.number%22%2Csd%3A%22change_request.short_description%22%2Cdesc%3A%22change_request.description%22%7D%7D%3Bvar%20m%3Dfm%5Bttype%5D%3Bif(!m)%7Balert(%22Unknown%20ticket%20type%3A%20%22%2Bttype)%3Breturn%3B%7Dfunction%20gv(id)%7Bvar%20el%3Ddocument.getElementById(id)%3Breturn%20el%3F(el.value%7C%7C%22%22)%3A%22%22%7Dvar%20requester%3Dgv(m.req)%2CticketNum%3Dgv(m.num)%2CshortDesc%3Dgv(m.sd)%2Cdesc%3Dgv(m.desc)%2CreqNum%3Dm.rn%3Fgv(m.rn)%3A%22%22%3Bvar%20firstName%3D(requester.split(%22%20%22)%5B0%5D%7C%7C%22there%22)%3Bvar%20link%3D%22https%3A%2F%2Fumassmemorial.service-now.com%2Fnav_to.do%3Furi%3D%22%2Bm.file%2B%22%3Fsys_id%3D%22%2BsysId%3Bvar%20nl%3DString.fromCharCode(13%2C10)%3Bvar%20subject%3Dttype%3D%3D%3D%22sctask%22%26%26reqNum%3F(reqNum%2B%22%20%2F%20%22%2BticketNum%2B%22%20%22%2BshortDesc)%3A(ticketNum%2B%22%20%22%2BshortDesc)%3Bvar%20body%3D%22Hi%20%22%2BfirstName%2B%22!%22%2Bnl%2Bnl%2B%22%3D%3D%3D%20EMAIL%20INTRO%20GOES%20HERE%20%3D%3D%3D%22%2Bnl%2Bnl%2B%22________________________________________%22%2Bnl%2Bnl%2BticketNum%2B%22%20%22%2BshortDesc%2Bnl%2Blink%2Bnl%2Bnl%2B%22Description%3A%22%2Bnl%2Bnl%2Bdesc%2Bnl%2B%22________________________________________%22%2Bnl%2Bnl%3Bvar%20text%3D%22SUBJECT%3A%20%22%2Bsubject%2Bnl%2Bnl%2Bbody%3Bnavigator.clipboard.writeText(text)%3B%7D)()";
 var COPY_HREF = "javascript:(function()%7Bvar%20numEl%3Ddocument.getElementById(%22sys_readonly.sc_task.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.incident.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.change_request.number%22)%3Bif(!numEl)%7Balert(%22Open%20a%20specific%20SNOW%20ticket%20page%20first.%22)%3Breturn%3B%7Dvar%20num%3DnumEl.value%3Bvar%20ttype%3D%2F%5Ba-zA-Z%5D%2B%2Fg.exec(num)%5B0%5D.toLowerCase()%3Bvar%20sysId%3D(document.getElementById(%22sys_uniqueValue%22)%7C%7C%7B%7D).value%7C%7C%22%22%3Bvar%20fm%3D%7Bsctask%3A%7Bfile%3A%22sc_task.do%22%2Csd%3A%22sc_task.short_description%22%7D%2Cinc%3A%7Bfile%3A%22incident.do%22%2Csd%3A%22incident.short_description%22%7D%2Cchg%3A%7Bfile%3A%22change_request.do%22%2Csd%3A%22change_request.short_description%22%7D%7D%3Bvar%20m%3Dfm%5Bttype%5D%3Bif(!m)%7Balert(%22Unknown%20ticket%20type%3A%20%22%2Bttype)%3Breturn%3B%7Dfunction%20gv(id)%7Bvar%20el%3Ddocument.getElementById(id)%3Breturn%20el%3F(el.value%7C%7C%22%22)%3A%22%22%7Dvar%20shortDesc%3Dgv(m.sd)%3Bvar%20link%3D%22https%3A%2F%2Fumassmemorial.service-now.com%2Fnav_to.do%3Furi%3D%22%2Bm.file%2B%22%3Fsys_id%3D%22%2BsysId%3Bvar%20nl%3DString.fromCharCode(13%2C10)%3Bvar%20text%3Dnum%2B%22%20%22%2BshortDesc%2Bnl%2Blink%3Bnavigator.clipboard.writeText(text)%3B%7D)()";
 
+
+function sw(id){
+  var TABS=["pg","tm","bm"];
+  var i=TABS.indexOf(id);
+  document.querySelectorAll(".tabs > .tab").forEach(function(b,n){b.classList.toggle("on",n===i);});
+  document.querySelectorAll(".content > .panel").forEach(function(p,n){p.classList.toggle("on",n===i);});
+}
 function toggleAcc(id){document.getElementById(id).classList.toggle("open");}
 function togglePageSec(id){document.getElementById(id).classList.toggle("open");}
 function toggleProcess(id){document.getElementById(id).classList.toggle("open");}
@@ -257,31 +262,14 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
   </nav>
 
   <div class="main">
+    <div class="tabs">
+      <button class="tab on" onclick="sw('pg')">Process Guide</button>
+      <button class="tab" onclick="sw('tm')">TaskMaster</button>
+      <button class="tab" onclick="sw('bm')">Install Bookmarklets</button>
+    </div>
     <div class="content">
-
-      <!-- TASKMASTER + ORDER LEGEND -->
-      <div class="psec open" id="psec-tm">
-        <div class="psec-hdr" onclick="togglePageSec('psec-tm')">
-          <span class="psec-title">&#127381; TaskMaster</span>
-          <span class="psec-arrow">&#9662;</span>
-        </div>
-        <div class="psec-body">
-          <div class="card">
-            <div class="card-title">Color coding &amp; Order values</div>
-            <p style="font-size:.78rem;color:#64748b;margin-bottom:12px;">Set the <strong style="color:#e2e8f0">Order</strong> field first digit to control how TaskMaster labels each ticket.</p>
-            <div class="lgrid" id="lgrid"></div>
-
-          </div>
-        </div>
-      </div>
-
-<div class="psec open" id="psec-pg">
-        <div class="psec-hdr" onclick="togglePageSec('psec-pg')">
-          <span class="psec-title">&#128203; Process Guide</span>
-          <span class="psec-arrow">&#9662;</span>
-        </div>
-        <div class="psec-body">
-          <div class="card">
+      <div class="panel on" id="panel-pg">
+        <div class="card">
             <div class="card-title">Triage Process Guide</div>
             <p style="font-size:.78rem;color:#64748b;margin-bottom:16px;">The process for triaging ServiceNow tickets using the SNOW Helper.</p>
 
@@ -413,16 +401,17 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
             </div>
 
           </div>
-        </div>
       </div>
+      <div class="panel" id="panel-tm">
+        <div class="card">
+            <div class="card-title">Color coding &amp; Order values</div>
+            <p style="font-size:.78rem;color:#64748b;margin-bottom:12px;">Set the <strong style="color:#e2e8f0">Order</strong> field first digit to control how TaskMaster labels each ticket.</p>
+            <div class="lgrid" id="lgrid"></div>
 
-<div class="psec" id="psec-bm">
-        <div class="psec-hdr" onclick="togglePageSec('psec-bm')">
-          <span class="psec-title">&#9881; Install Bookmarklets</span>
-          <span class="psec-arrow">&#9662;</span>
-        </div>
-        <div class="psec-body">
-          <div class="card" style="border-color:#a78bfa;background:rgba(167,139,250,.07);margin-bottom:14px;">
+          </div>
+      </div>
+      <div class="panel" id="panel-bm">
+        <div class="card" style="border-color:#a78bfa;background:rgba(167,139,250,.07);margin-bottom:14px;">
             <div class="card-title" style="color:#a78bfa;">One-time setup</div>
             <p style="font-size:.8rem;color:#94a3b8;line-height:1.7;">Copy each URL and manually create a bookmark in Chrome. Takes about 30 seconds each.</p>
           </div>
@@ -459,12 +448,11 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
             </div>
             <div class="copy-row"><div class="bm-code" id="cpbox"></div><button class="cpy-btn" id="cpbtn" onclick="cpybm('cp')">Copy URL</button></div>
           </div>
-        </div>
       </div>
-
     </div>
   </div>
 </div>
+
 
 <script>
 document.getElementById("tmbox").textContent = TM_HREF;
