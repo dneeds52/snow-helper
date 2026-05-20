@@ -169,7 +169,7 @@ function toggleProcess(id){
 function sw(id){
   var TABS=["tm","em","bm","hl","pg"];
   var i=TABS.indexOf(id);
-  document.querySelectorAll(".tab").forEach(function(b,n){b.classList.toggle("on",n===i);});
+  document.querySelectorAll(".tabs > .tab").forEach(function(b,n){b.classList.toggle("on",n===i);});
   document.querySelectorAll(".panels > .panel").forEach(function(p,n){p.classList.toggle("on",n===i);});
 }
 
