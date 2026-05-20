@@ -424,11 +424,19 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
       </div>
       <div class="panel" id="panel-tm">
         <div class="card">
-            <div class="card-title">Color coding &amp; Order values</div>
-            <p style="font-size:.78rem;color:#64748b;margin-bottom:12px;">Set the <strong style="color:#e2e8f0">Order</strong> field first digit to control how TaskMaster labels each ticket.</p>
-            <div class="lgrid" id="lgrid"></div>
-
-          </div>
+          <div class="card-title">Color coding &amp; Order values</div>
+          <p style="font-size:.78rem;color:#64748b;margin-bottom:12px;">Set the <strong style="color:#e2e8f0">Order</strong> field first digit to control how TaskMaster labels each ticket.</p>
+          <div class="lgrid" id="lgrid-tm" style="margin-bottom:0;"></div>
+        </div>
+        <div class="card" style="margin-top:14px;">
+          <div class="card-title">How to use</div>
+          <ol style="padding-left:18px;font-size:.82rem;color:#94a3b8;line-height:2.2;">
+            <li>Go to <strong style="color:#e2e8f0">Install Bookmarklets</strong> tab for one-time setup</li>
+            <li>Click any sidebar link to open a SNOW list view</li>
+            <li>Click your <strong style="color:#e2e8f0">TaskMaster</strong> bookmark to apply color labels</li>
+            <li>For email/copy: open a ticket then click the relevant bookmark</li>
+          </ol>
+        </div>
       </div>
       <div class="panel" id="panel-bm">
         <div class="card" style="border-color:#a78bfa;background:rgba(167,139,250,.07);margin-bottom:14px;">
@@ -503,6 +511,7 @@ var OM=[
   }
   fillGrid(document.getElementById("lgrid"));
   fillGrid(document.getElementById("lgrid-side"));
+  fillGrid(document.getElementById("lgrid-tm"));
 })();
 // No auto-close for sidebar accordions - they stay open until manually clicked
 var rem=25*60,iv=null,run=false;
