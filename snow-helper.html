@@ -492,10 +492,7 @@ var OM=[
     g.appendChild(d);
   });
 })();
-document.addEventListener("click",function(e){
-  if(!e.target.closest(".acc-wrap"))
-    document.querySelectorAll(".acc-wrap.open").forEach(function(d){d.classList.remove("open");});
-});
+// No auto-close for sidebar accordions - they stay open until manually clicked
 var rem=25*60,iv=null,run=false;
 function td(){
   var m=Math.floor(rem/60).toString().padStart(2,"0"),s=(rem%60).toString().padStart(2,"0");
