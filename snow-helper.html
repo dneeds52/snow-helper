@@ -10,7 +10,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
 body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-.header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;flex-shrink:0;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;flex-shrink:0;position:relative;}
 .logo{font-family:'JetBrains Mono',monospace;font-size:.9rem;font-weight:600;color:#a78bfa;letter-spacing:.05em;}
 .timer-wrap{display:flex;align-items:center;gap:8px;}
 #tdisp{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:600;color:#67e8f9;min-width:58px;}
@@ -66,7 +66,7 @@ a.s-link.purple:hover .remove-user{display:block;}
 .card-title{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#67e8f9;margin-bottom:12px;}
 /* LEGEND */
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;}
-.litem{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;border-left:3px solid;font-size:.78rem;}
+.litem{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:6px;border-left:3px solid;font-size:.78rem;}
 .lcode{font-family:'JetBrains Mono',monospace;font-size:.68rem;min-width:36px;opacity:.75;}
 /* EMAIL FORM */
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
@@ -94,9 +94,7 @@ button.act.primary:hover{background:#8b5cf6;}
 .cpy-btn:hover{border-color:#67e8f9;}
 .cpy-btn.ok{border-color:#34d399;color:#34d399;}
 /* HELP TABLE */
-.htbl{width:100%;border-collapse:collapse;font-size:.8rem;}
-.htbl th{text-align:left;padding:7px 10px;border-bottom:1px solid #2a2a3e;font-size:.63rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#475569;}
-.htbl td{padding:7px 10px;border-bottom:1px solid #1e1e2e;}
+
 .ctag{font-family:'JetBrains Mono',monospace;font-size:.65rem;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:3px;padding:1px 5px;color:#67e8f9;}
 /* PROCESS GUIDE */
 .process-section{margin-bottom:8px;border:1px solid #2a2a3e;border-radius:8px;overflow:hidden;}
@@ -197,7 +195,8 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
 </head>
 <body>
 <div class="header">
-  <div style="display:flex;align-items:center;"><div class="logo">SNOW_HELPER</div><span class="phrase" id="phrase"></span></div>
+  <div class="logo">SNOW_HELPER 2.0</div>
+  <span class="phrase" id="phrase" style="position:absolute;left:50%;transform:translateX(-50%);"></span>
   <div class="timer-wrap">
     <span id="tdisp">25:00</span>
     <button class="tbtn" id="tstart">Start</button>
@@ -270,11 +269,8 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
           <div class="card">
             <div class="card-title">Color coding &amp; Order values</div>
             <p style="font-size:.78rem;color:#64748b;margin-bottom:12px;">Set the <strong style="color:#e2e8f0">Order</strong> field first digit to control how TaskMaster labels each ticket.</p>
-            <div class="lgrid" id="lgrid" style="margin-bottom:16px;"></div>
-            <table class="htbl">
-              <thead><tr><th>Order range</th><th>Label</th><th>Meaning</th></tr></thead>
-              <tbody id="htbody"></tbody>
-            </table>
+            <div class="lgrid" id="lgrid"></div>
+
           </div>
         </div>
       </div>
@@ -488,15 +484,12 @@ var OM=[
   {r:"80-89",  l:"ASAP PC",       b:"#008970",c:"#34d399",bg:"#0a2d25",m:"ASAP Partnership Council"}
 ];
 (function(){
-  var g=document.getElementById("lgrid"),tb=document.getElementById("htbody");
+  var g=document.getElementById("lgrid");
   OM.forEach(function(o){
     var d=document.createElement("div");d.className="litem";
     d.style.borderLeftColor=o.b;d.style.color=o.c;d.style.background=o.bg;
-    d.innerHTML='<span class="lcode">'+o.r+'</span><span style="font-weight:500">['+o.l+']</span>';
+    d.innerHTML='<span class="lcode">'+o.r+'</span><div><div style="font-weight:500">['+o.l+']</div><div style="font-size:.68rem;opacity:.7;margin-top:2px;color:'+o.c+'">'+o.m+'</div></div>';
     g.appendChild(d);
-    var tr=document.createElement("tr");
-    tr.innerHTML='<td><span class="ctag">'+o.r+'</span></td><td style="color:'+o.c+';font-weight:500">['+o.l+']</td><td style="color:#64748b">'+o.m+'</td>';
-    tb.appendChild(tr);
   });
 })();
 document.addEventListener("click",function(e){
