@@ -128,7 +128,7 @@ button.act.primary:hover{background:#8b5cf6;}
 .filter-list{padding-left:16px;font-size:.78rem;color:#94a3b8;line-height:2;}
 .filter-list li{padding-left:2px;}
 
-.filter-acc{border:1px solid #2a2a3e;border-radius:10px;margin-bottom:24px;overflow:hidden;} .filter-acc+*{margin-top:8px;}
+.filter-acc{border:1px solid #2a2a3e;border-radius:10px;margin-bottom:16px;overflow:hidden;} .filter-acc+*{margin-top:8px;}
 .filter-acc-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1a1a2e;cursor:pointer;transition:background .15s;}
 .filter-acc-hdr:hover{background:#242438;}
 .filter-acc-body{display:none;padding:14px;}
@@ -312,7 +312,16 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
     </ul>
   </div>
 </div>
-        <div class="pg-layout">
+</div>
+
+
+      <div class="filter-acc open" id="acc-pg" style="margin-top:16px;">
+        <div class="filter-acc-hdr" onclick="document.getElementById('acc-pg').classList.toggle('open')">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Triage Process Guide</span>
+          <span class="acc-arrow">&#9662;</span>
+        </div>
+        <div class="filter-acc-body">
+          <div class="pg-layout">
           <div class="pg-main">
             <div class="card">
             <div class="card-title">Triage Process Guide</div>
@@ -454,10 +463,16 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
             </div>
           </div>
         </div>
+        </div>
+      </div>
 
-      <div style="border-top:1px solid #2a2a3e;margin:20px 0;"></div>
-
-        <div class="card" style="border-color:#a78bfa;background:rgba(167,139,250,.07);margin-bottom:14px;">
+      <div class="filter-acc" id="acc-bm">
+        <div class="filter-acc-hdr" onclick="document.getElementById('acc-bm').classList.toggle('open')">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Install Bookmarklets</span>
+          <span class="acc-arrow">&#9662;</span>
+        </div>
+        <div class="filter-acc-body">
+          <div class="card" style="border-color:#a78bfa;background:rgba(167,139,250,.07);margin-bottom:14px;">
             <div class="card-title" style="color:#a78bfa;">One-time setup</div>
             <p style="font-size:.8rem;color:#94a3b8;line-height:1.7;">Copy each URL and manually create a bookmark in Chrome. Takes about 30 seconds each.</p>
           </div>
@@ -494,7 +509,8 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
             </div>
             <div class="copy-row"><div class="bm-code" id="cpbox"></div><button class="cpy-btn" id="cpbtn" onclick="cpybm('cp')">Copy URL</button></div>
           </div>
-
+        </div>
+      </div>
     </div>
   </div>
 </div>
