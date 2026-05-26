@@ -147,6 +147,43 @@ var EM_HREF   = "javascript:(function()%7Bvar%20numEl%3Ddocument.getElementById(
 var COPY_HREF = "javascript:(function()%7Bvar%20numEl%3Ddocument.getElementById(%22sys_readonly.sc_task.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.incident.number%22)%7C%7Cdocument.getElementById(%22sys_readonly.change_request.number%22)%3Bif(!numEl)%7Balert(%22Open%20a%20specific%20SNOW%20ticket%20page%20first.%22)%3Breturn%3B%7Dvar%20num%3DnumEl.value%3Bvar%20ttype%3D%2F%5Ba-zA-Z%5D%2B%2Fg.exec(num)%5B0%5D.toLowerCase()%3Bvar%20sysId%3D(document.getElementById(%22sys_uniqueValue%22)%7C%7C%7B%7D).value%7C%7C%22%22%3Bvar%20fm%3D%7Bsctask%3A%7Bfile%3A%22sc_task.do%22%2Csd%3A%22sc_task.short_description%22%7D%2Cinc%3A%7Bfile%3A%22incident.do%22%2Csd%3A%22incident.short_description%22%7D%2Cchg%3A%7Bfile%3A%22change_request.do%22%2Csd%3A%22change_request.short_description%22%7D%7D%3Bvar%20m%3Dfm%5Bttype%5D%3Bif(!m)%7Balert(%22Unknown%20ticket%20type%3A%20%22%2Bttype)%3Breturn%3B%7Dfunction%20gv(id)%7Bvar%20el%3Ddocument.getElementById(id)%3Breturn%20el%3F(el.value%7C%7C%22%22)%3A%22%22%7Dvar%20shortDesc%3Dgv(m.sd)%3Bvar%20link%3D%22https%3A%2F%2Fumassmemorial.service-now.com%2Fnav_to.do%3Furi%3D%22%2Bm.file%2B%22%3Fsys_id%3D%22%2BsysId%3Bvar%20nl%3DString.fromCharCode(13%2C10)%3Bvar%20text%3Dnum%2B%22%20%22%2BshortDesc%2Bnl%2Blink%3Bnavigator.clipboard.writeText(text)%3B%7D)()";
 
 
+
+function launchConfetti(btn) {
+  var colors = ['#a78bfa','#67e8f9','#f59e0b','#34d399','#f87171','#fb923c','#60a5fa'];
+  var rect = btn.getBoundingClientRect();
+  var cx = rect.left + rect.width/2;
+  var cy = rect.top + rect.height/2;
+  for(var i=0; i<30; i++) {
+    var el = document.createElement('div');
+    el.style.cssText = [
+      'position:fixed',
+      'pointer-events:none',
+      'z-index:9999',
+      'width:'+(Math.random()*8+4)+'px',
+      'height:'+(Math.random()*8+4)+'px',
+      'background:'+colors[Math.floor(Math.random()*colors.length)],
+      'border-radius:'+(Math.random()>0.5?'50%':'2px'),
+      'left:'+cx+'px',
+      'top:'+cy+'px',
+      'opacity:1',
+      'transform:translate(-50%,-50%)',
+      'transition:none'
+    ].join(';');
+    document.body.appendChild(el);
+    var angle = (Math.random()*360) * Math.PI/180;
+    var dist = Math.random()*120+40;
+    var tx = Math.cos(angle)*dist;
+    var ty = Math.sin(angle)*dist;
+    var rot = Math.random()*720-360;
+    setTimeout(function(e, x, y, r){
+      e.style.transition = 'transform 0.8s ease-out, opacity 0.8s ease-out';
+      e.style.transform = 'translate(calc(-50% + '+x+'px), calc(-50% + '+y+'px)) rotate('+r+'deg)';
+      e.style.opacity = '0';
+      setTimeout(function(){ if(e.parentNode) e.parentNode.removeChild(e); }, 900);
+    }, 10, el, tx, ty, rot);
+  }
+}
+
 function toggleAcc(id){document.getElementById(id).classList.toggle("open");}
 function togglePageSec(id){document.getElementById(id).classList.toggle("open");}
 function toggleProcess(id){document.getElementById(id).classList.toggle("open");}
@@ -241,7 +278,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
     <div class="add-user-form">
       <input id="new-user-name" type="text" placeholder="Name (e.g. Jane Smith)">
       <input id="new-user-id" type="text" placeholder="sys_id (32 chars)">
-      <button class="add-user-btn" onclick="addUser()">+ Add User</button>
+      <button class="add-user-btn" onclick="addUser();launchConfetti(this)">+ Add User</button>
     </div>
       </div>
     </div>
@@ -485,7 +522,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
               <div class="bm-step"><div class="snum">3</div><div class="sbody">Right-click the bookmarks bar &rarr; <strong>Add page...</strong></div></div>
               <div class="bm-step"><div class="snum">4</div><div class="sbody">Name: <code>TaskMaster</code> &mdash; paste into URL field &mdash; Save</div></div>
             </div>
-            <div class="copy-row"><div class="bm-code" id="tmbox"></div><button class="cpy-btn" id="tmbtn" onclick="cpybm('tm')">Copy URL</button></div>
+            <div class="copy-row"><div class="bm-code" id="tmbox"></div><button class="cpy-btn" id="tmbtn" onclick="cpybm('tm');launchConfetti(this)">Copy URL</button></div>
           </div>
           <div class="bm-card">
             <div class="card-title"><img src="favicon-email.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Bookmarklet 2 &mdash; Email Boilerplate</div>
@@ -496,7 +533,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
               <div class="bm-step"><div class="snum">3</div><div class="sbody">Name: <code>Email Boilerplate</code> &mdash; paste URL &mdash; Save</div></div>
               <div class="bm-step"><div class="snum">4</div><div class="sbody">Open any SNOW ticket, then click the bookmark</div></div>
             </div>
-            <div class="copy-row"><div class="bm-code" id="embox"></div><button class="cpy-btn" id="embtn" onclick="cpybm('em')">Copy URL</button></div>
+            <div class="copy-row"><div class="bm-code" id="embox"></div><button class="cpy-btn" id="embtn" onclick="cpybm('em');launchConfetti(this)">Copy URL</button></div>
           </div>
           <div class="bm-card">
             <div class="card-title"><img src="favicon-copy.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Bookmarklet 3 &mdash; Copy Ticket Info</div>
@@ -507,7 +544,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
               <div class="bm-step"><div class="snum">3</div><div class="sbody">Name: <code>Copy Ticket Info</code> &mdash; paste URL &mdash; Save</div></div>
               <div class="bm-step"><div class="snum">4</div><div class="sbody">Open any SNOW ticket and click &mdash; info is silently copied</div></div>
             </div>
-            <div class="copy-row"><div class="bm-code" id="cpbox"></div><button class="cpy-btn" id="cpbtn" onclick="cpybm('cp')">Copy URL</button></div>
+            <div class="copy-row"><div class="bm-code" id="cpbox"></div><button class="cpy-btn" id="cpbtn" onclick="cpybm('cp');launchConfetti(this)">Copy URL</button></div>
           </div>
         </div>
       </div>
