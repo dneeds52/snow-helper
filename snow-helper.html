@@ -127,6 +127,13 @@ button.act.primary:hover{background:#8b5cf6;}
 .filter-title{font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;margin-bottom:10px;}
 .filter-list{padding-left:16px;font-size:.78rem;color:#94a3b8;line-height:2;}
 .filter-list li{padding-left:2px;}
+
+.filter-acc{border:1px solid #2a2a3e;border-radius:10px;margin-bottom:24px;overflow:hidden;} .filter-acc+*{margin-top:8px;}
+.filter-acc-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1a1a2e;cursor:pointer;transition:background .15s;}
+.filter-acc-hdr:hover{background:#242438;}
+.filter-acc-body{display:none;padding:14px;}
+.filter-acc.open .filter-acc-body{display:block;}
+.filter-acc.open .acc-arrow{transform:rotate(180deg);}
 </style>
 <script>
 
@@ -269,7 +276,12 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
 
   <div class="main">
     <div class="content">
-        <div class="filter-grid">
+        <div class="filter-acc open" id="filter-acc">
+  <div class="filter-acc-hdr" onclick="document.getElementById('filter-acc').classList.toggle('open')">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Queue Filter Reference</span>
+    <span class="acc-arrow">&#9662;</span>
+  </div>
+  <div class="filter-acc-body"><div class="filter-grid">
   <div class="filter-col">
     <div class="filter-title">SC Tasks</div>
     <ul class="filter-list">
@@ -337,7 +349,8 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
                   </ul>
                 </div>
               </div>
-            </div>
+            </div></div>
+</div>
 
             <div class="process-section" id="ps-initial">
               <div class="process-header" onclick="toggleProcess('ps-initial')">
