@@ -134,6 +134,17 @@ button.act.primary:hover{background:#8b5cf6;}
 .filter-acc-body{display:none;padding:14px;}
 .filter-acc.open .filter-acc-body{display:block;}
 .filter-acc.open .acc-arrow{transform:rotate(180deg);}
+
+.sched-card{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:10px;padding:16px 18px;margin-bottom:16px;}
+.sched-title{font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;margin-bottom:12px;}
+.sched-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.sched-day{background:#0f0f1a;border:1px solid #2a2a3e;border-radius:8px;padding:10px 8px;text-align:center;}
+.sched-day-name{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569;margin-bottom:6px;}
+.sched-day.today .sched-day-name{color:#f59e0b;}
+.sched-day.today{border-color:#f59e0b;background:#1a160a;}
+.sched-person{font-size:.78rem;font-weight:500;color:#e2e8f0;}
+.sched-select{width:100%;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:5px;color:#e2e8f0;font-family:'Inter',sans-serif;font-size:.75rem;padding:3px 4px;text-align:center;cursor:pointer;outline:none;}
+.sched-select:focus{border-color:#a78bfa;}
 </style>
 <script>
 
@@ -183,6 +194,35 @@ function launchConfetti(btn) {
     }, 10, el, tx, ty, rot);
   }
 }
+
+
+function saveSchedule(){
+  var days=['monday','tuesday','wednesday','thursday','friday'];
+  var data={};
+  days.forEach(function(d){
+    var el=document.getElementById('sel-'+d);
+    if(el) data[d]=el.value;
+  });
+  try{ localStorage.setItem('snow_schedule',JSON.stringify(data)); }catch(e){}
+}
+function loadSchedule(){
+  try{
+    var saved=localStorage.getItem('snow_schedule');
+    if(saved){
+      var data=JSON.parse(saved);
+      Object.keys(data).forEach(function(d){
+        var el=document.getElementById('sel-'+d);
+        if(el) el.value=data[d];
+      });
+    }
+  }catch(e){}
+  // Highlight today
+  var dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  var today=dayNames[new Date().getDay()];
+  var todayEl=document.getElementById('sched-'+today);
+  if(todayEl) todayEl.classList.add('today');
+}
+document.addEventListener('DOMContentLoaded', loadSchedule);
 
 function toggleAcc(id){document.getElementById(id).classList.toggle("open");}
 function togglePageSec(id){document.getElementById(id).classList.toggle("open");}
@@ -313,6 +353,52 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
 
   <div class="main">
     <div class="content">
+
+      <div class="filter-acc open" id="acc-sched">
+        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':' rotate(180deg)'">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Queue Schedule</span>
+          <span class="acc-arrow" style="font-size:1rem;color:#94a3b8;">&#9662;</span>
+        </div>
+        <div class="filter-acc-body" style="display:block">
+          <div class="sched-card">
+            <div class="sched-title">Weekly Queue Coverage</div>
+            <div class="sched-grid">
+        <div class="sched-day" id="sched-monday">
+          <div class="sched-day-name">Mon</div>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-monday">
+            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde" selected>Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
+          </select>
+        </div>
+        <div class="sched-day" id="sched-tuesday">
+          <div class="sched-day-name">Tue</div>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-tuesday">
+            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde" selected>Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
+          </select>
+        </div>
+        <div class="sched-day" id="sched-wednesday">
+          <div class="sched-day-name">Wed</div>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-wednesday">
+            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham" selected>Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
+          </select>
+        </div>
+        <div class="sched-day" id="sched-thursday">
+          <div class="sched-day-name">Thu</div>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-thursday">
+            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher" selected>David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
+          </select>
+        </div>
+        <div class="sched-day" id="sched-friday">
+          <div class="sched-day-name">Fri</div>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-friday">
+            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher" selected>David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
+          </select>
+        </div>
+            </div>
+            <p style="font-size:.7rem;color:#475569;margin-top:10px;">Changes save automatically. Click any name to reassign.</p>
+          </div>
+        </div>
+      </div>
+
         <div class="filter-acc open" id="filter-acc">
   <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':' rotate(180deg)'">
     <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Queue Filter Reference</span>
