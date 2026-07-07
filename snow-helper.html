@@ -196,6 +196,16 @@ function launchConfetti(btn) {
 }
 
 
+
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.filter-acc-body').forEach(function(body){
+    var arrow = body.previousElementSibling ? body.previousElementSibling.querySelector('.acc-arrow') : null;
+    if(arrow && body.style.display !== 'none') {
+      arrow.style.transform = 'rotate(180deg)';
+    }
+  });
+});
+
 function saveSchedule(){
   var days=['monday','tuesday','wednesday','thursday','friday'];
   var data={};
@@ -355,7 +365,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
     <div class="content">
 
       <div class="filter-acc open" id="acc-sched">
-        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':' rotate(180deg)'">
+        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':'rotate(180deg)'">
           <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Queue Schedule</span>
           <span class="acc-arrow" style="font-size:1rem;color:#94a3b8;">&#9662;</span>
         </div>
@@ -365,33 +375,23 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
             <div class="sched-grid">
         <div class="sched-day" id="sched-monday">
           <div class="sched-day-name">Mon</div>
-          <select class="sched-select" onchange="saveSchedule()" id="sel-monday">
-            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde" selected>Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
-          </select>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-monday"><option value="Kelsy Hodde" selected>Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham">Darcy</option></select>
         </div>
         <div class="sched-day" id="sched-tuesday">
           <div class="sched-day-name">Tue</div>
-          <select class="sched-select" onchange="saveSchedule()" id="sel-tuesday">
-            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde" selected>Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
-          </select>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-tuesday"><option value="Kelsy Hodde" selected>Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham">Darcy</option></select>
         </div>
         <div class="sched-day" id="sched-wednesday">
           <div class="sched-day-name">Wed</div>
-          <select class="sched-select" onchange="saveSchedule()" id="sel-wednesday">
-            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham" selected>Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
-          </select>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-wednesday"><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher">David</option><option value="Darcy Needham" selected>Darcy</option></select>
         </div>
         <div class="sched-day" id="sched-thursday">
           <div class="sched-day-name">Thu</div>
-          <select class="sched-select" onchange="saveSchedule()" id="sel-thursday">
-            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher" selected>David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
-          </select>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-thursday"><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher" selected>David</option><option value="Darcy Needham">Darcy</option></select>
         </div>
         <div class="sched-day" id="sched-friday">
           <div class="sched-day-name">Fri</div>
-          <select class="sched-select" onchange="saveSchedule()" id="sel-friday">
-            <option value="Gui Siqueira">Gui</option><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher" selected>David</option><option value="Darcy Needham">Darcy</option><option value="Andres Gil">Andres</option><option value="Mike Hahn">Mike</option><option value="Dwayne Baker">Dwayne</option><option value="Gina DeShazer">Gina</option><option value="Carrie Johnson">Carrie</option>
-          </select>
+          <select class="sched-select" onchange="saveSchedule()" id="sel-friday"><option value="Kelsy Hodde">Kelsy</option><option value="David Fisher" selected>David</option><option value="Darcy Needham">Darcy</option></select>
         </div>
             </div>
             <p style="font-size:.7rem;color:#475569;margin-top:10px;">Changes save automatically. Click any name to reassign.</p>
@@ -400,7 +400,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
       </div>
 
         <div class="filter-acc open" id="filter-acc">
-  <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':' rotate(180deg)'">
+  <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':'rotate(180deg)'">
     <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Queue Filter Reference</span>
     <span class="acc-arrow">&#9662;</span>
   </div>
@@ -439,7 +439,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
 
 
       <div class="filter-acc" id="acc-pg" style="margin-top:16px;">
-        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':' rotate(180deg)'">
+        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':'rotate(180deg)'">
           <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Triage Process Guide</span>
           <span class="acc-arrow">&#9662;</span>
         </div>
@@ -590,7 +590,7 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
       </div>
 
       <div class="filter-acc" id="acc-bm">
-        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':' rotate(180deg)'">
+        <div class="filter-acc-hdr" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.acc-arrow').style.transform=b.style.display==='none'?'':'rotate(180deg)'">
           <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#67e8f9;">Install Bookmarklets</span>
           <span class="acc-arrow">&#9662;</span>
         </div>
