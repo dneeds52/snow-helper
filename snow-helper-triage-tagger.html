@@ -249,14 +249,19 @@
 
   var SITE_RULES = [
     ["EMH",  /\bemh\b/],
-    ["UNV",  /\bunv\b|med center|university|memorial campus|\bmem\b/],
-    ["HA",   /\bha\b|healthalliance|health alliance|leominster/],
-    ["MARL", /\bmarl\b|marlborough/],
-    ["CLIN", /\bclin\b|clinton/],
+    ["UNV",  /\bunv\b|med center|university|unv\\bmem\b/],
+    ["MEM",  /\bmem\b|med center|memorial|mem|memorial campus|\bmem\b/], 
+    ["MARL", /\bmarl\b|med center|marlborough|marl/],
+    ["HA",   /\bhalc\b|healthalliance|health alliance|halc|leominster/],
+    ["CLIN", /\bclin\b|clinton|clin/],
+    ["HH SB",  /\bhhsb\b|harrington|south bridge|hh sb\bmem\b/],  
+    ["HH WEB",  /\buhhweb\b|harrington|webster|hh web\bmem\b/],  
+    ["MRMC",  /\bmrmc\b|milford regional medical center|milford|mrmc\bmem\b/],  
+    ["NV",  /\bnv\b|nashoba valley|nv|groton\bmem\b/],   
     ["UC",   /urgent care/]
   ];
 
-  var SITES = ["UNV", "EMH", "HA", "MARL", "CLIN", "UC", "ALL"];
+  var SITES = ["UNV",  "MEM", "MARL", "HALC", "CLIN", "HHSB", "HHWEB", "MRMC", "NV", "UC", "EMH","ALL"];
   var ACTIONS = ["Add", "Remove", "Update", "Fix", "Grant", "Build", "Investigate"];
   var BOILERPLATE = /^(conversion - incident to request:\s*|application optimization & routine maint\.?\s*-\s*)/i;
 
