@@ -335,6 +335,23 @@
     return line;
   }
 
+  // Remove mentions of the selected site from text (the Site slot already
+  // carries it — no need to repeat the location in the detail).
+  function stripSite(text, code) {
+    if (!code || code === "ALL") return text;
+    var rule = null;
+    for (var i = 0; i < SITE_RULES.length; i++) {
+      if (SITE_RULES[i][0] === code) { rule = SITE_RULES[i][1]; break; }
+    }
+    if (!rule) return text;
+    var re = new RegExp("(\\b(?:at|in|for|on)\\s+(?:the\\s+)?)?(?:" + rule.source + ")\\s*(campus|hospital|site|ed)?", "gi");
+    return text.replace(re, " ")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.:;!?])/g, "$1")
+      .replace(/^[\s,\-\u2013:]+|[\s,\-\u2013]+$/g, "")
+      .trim();
+  }
+
   // Professional formatting: collapse whitespace, capitalize, terminal period.
   function tidy(s) {
     s = s.replace(/\s+/g, " ").trim();
@@ -453,6 +470,10 @@
       b.addEventListener("click", function () {
         if (key === "site") state.touched.site = true;
         state[key] = (state[key] === v) ? "" : v;
+        if (key === "site" && state.site && !$("ttDetail").dataset.touched) {
+          $("ttDetail").value = stripSite($("ttDetail").value, state.site);
+          updateCounter();
+        }
         renderBar(containerId, key);
         renderPreview();
       });
@@ -512,7 +533,7 @@
 
     var det = $("ttDetail");
     if (!det.dataset.touched) {
-      det.value = cleanDetail(raw.split(/\r?\n/)[0]);
+      det.value = stripSite(cleanDetail(raw.split(/\r?\n/)[0]), state.site);
       updateCounter();
     }
     $("ttSuggestHint").textContent = hints.length ? "Suggested: " + hints.join("  \u00B7  ") : "";
@@ -567,8 +588,11 @@
       $("ttDraftHint").textContent = "Paste the requester's text first, then draft.";
       return;
     }
-    var body = raw.replace(BOILERPLATE, "");
-    var sents = splitSentences(body);
+    var pieces = raw.split("--- ACTIVITY ---");
+    var body = pieces[0].replace(BOILERPLATE, "");
+    // Activity entries: strip the "[work note <date> <user>]" headers, keep the text.
+    var activity = (pieces[1] || "").replace(/^\s*\[(work note|comment)[^\]]*\]\s*/gim, "");
+    var sents = splitSentences(body).concat(splitSentences(activity));
 
     var cur = [], exp = [], who = [];
     sents.forEach(function (s) {
@@ -583,14 +607,14 @@
     if (who.length) whoBits = whoBits.concat(who);
     var siteHit = false;
     for (var j = 0; j < SITE_RULES.length; j++) {
-      if (SITE_RULES[j][1].test(body.toLowerCase())) { whoBits.push("Site: " + SITE_RULES[j][0] + "."); siteHit = true; break; }
+      if (SITE_RULES[j][1].test((body + " " + activity).toLowerCase())) { whoBits.push("Site: " + SITE_RULES[j][0] + "."); siteHit = true; break; }
     }
     if (!siteHit) {
       for (var k = 0; k < AMBIGUOUS_SITES.length; k++) {
         if (AMBIGUOUS_SITES[k][0].test(body.toLowerCase())) { whoBits.push("Site: " + AMBIGUOUS_SITES[k][2] + " (" + AMBIGUOUS_SITES[k][1].join("/") + " \u2014 confirm which)."); break; }
       }
     }
-    var recs = extractRecords(body);
+    var recs = extractRecords(body + " " + activity);
 
     var filled = [], skipped = [];
     function setBox(id, val, label) {
@@ -631,12 +655,13 @@
     var lines = [];
     var cur = tidy($("ttCur").value), exp = tidy($("ttExp").value),
         who = tidy($("ttWho").value), rec = $("ttRec").value.replace(/\s+/g, " ").trim(),
-        orig = $("ttPaste").value.trim();
-    if (cur) lines.push("CURRENT: " + cur);
-    if (exp) lines.push("EXPECTED: " + exp);
-    if (who) lines.push("WHO/WHERE: " + who);
-    if (rec) lines.push("RECORDS: " + rec);
-    if (orig) lines.push("", "ORIGINAL REQUEST:", orig);
+        orig = $("ttPaste").value.split("--- ACTIVITY ---")[0].trim();
+    if (cur) lines.push("CURRENT: " + cur, "");
+    if (exp) lines.push("EXPECTED: " + exp, "");
+    if (who) lines.push("WHO/WHERE: " + who, "");
+    if (rec) lines.push("RECORDS: " + rec, "");
+    if (orig) lines.push("ORIGINAL REQUEST:", orig);
+    while (lines.length && lines[lines.length - 1] === "") lines.pop();
     return lines.join("\n");
   }
 
@@ -698,7 +723,7 @@
     p.style.display = p.style.display === "none" ? "block" : "none";
   });
 
-  var BM_GRAB = "javascript:(function(){function rd(f){if(window.g_form){try{var v=g_form.getValue(f);if(v)return v}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');return el?el.value:''}var s=rd('short_description'),d=rd('description');var t=(s+(d?'\\n'+d:'')).trim();if(!t){alert('Could not read the ticket fields \\u2014 open an INC/SCTASK form first.');return}function done(){alert('Ticket text copied \\u2014 paste it into the Triage Tagger.')}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){prompt('Copy this (Ctrl+C), then paste into the Triage Tagger:',t)})}else{prompt('Copy this (Ctrl+C), then paste into the Triage Tagger:',t)}})();";
+  var BM_GRAB = "javascript:(function(){function rd(f){if(window.g_form){try{var v=g_form.getValue(f);if(v)return v}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');return el?el.value:''}function copy(t){function done(){alert('Ticket text + activity copied \\u2014 paste it into the Triage Tagger.')}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){prompt('Copy this (Ctrl+C), then paste into the Triage Tagger:',t)})}else{prompt('Copy this (Ctrl+C), then paste into the Triage Tagger:',t)}}var s=rd('short_description'),d=rd('description');var base=(s+(d?'\\n'+d:'')).trim();if(!base){alert('Could not read the ticket fields \\u2014 open an INC/SCTASK form first.');return}var tok=window.g_ck||'';if(window.g_form&&tok&&g_form.getUniqueValue()){fetch('/api/now/table/sys_journal_field?sysparm_query=element_id='+g_form.getUniqueValue()+'^elementINwork_notes,comments^ORDERBYDESCsys_created_on&sysparm_limit=20&sysparm_fields=element,value,sys_created_on,sys_created_by',{headers:{'Accept':'application/json','X-UserToken':tok}}).then(function(r){return r.json()}).then(function(j){var acts=(j.result||[]).map(function(e){return'['+(e.element==='work_notes'?'work note':'comment')+' '+e.sys_created_on+' '+e.sys_created_by+'] '+e.value});copy(base+(acts.length?'\\n\\n--- ACTIVITY ---\\n'+acts.join('\\n'):''))}).catch(function(){copy(base)})}else{copy(base)}})();"
   $("ttBmCodeGrab").textContent = BM_GRAB;
 
   var BM = "javascript:(function(){var p=prompt('Paste Triage Tagger payload:');if(!p)return;var d;try{d=JSON.parse(p)}catch(e){alert('Not valid payload JSON');return}var out=[];function fill(f,v){if(!v)return!1;if(window.g_form){try{g_form.setValue(f,v);return!0}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');if(el){el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}));return!0}return!1}out.push('Short desc: '+(fill('short_description',d.short_description)?'filled':'NOT filled'));out.push('Description: '+(fill('description',d.description)?'filled':'NOT filled'));(d.extras||[]).forEach(function(x){out.push(x.field+': '+(fill(x.field,x.value)?'set to '+x.value:'NOT set (check field name)'))});var tok=window.g_ck||'';function api(m,u,b){return fetch(u,{method:m,headers:{'Content-Type':'application/json','Accept':'application/json','X-UserToken':tok},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json()})}var chain=Promise.resolve();if(d.ci){chain=chain.then(function(){return api('GET','/api/now/table/cmdb_ci?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(d.ci))}).then(function(r){var rec=r.result&&r.result[0];if(rec&&window.g_form){g_form.setValue('cmdb_ci',rec.sys_id,rec.name);out.push('CI: set to '+rec.name)}else{out.push('CI: \"'+d.ci+'\" not found')}}).catch(function(){out.push('CI: lookup error')})}if(d.tags&&d.tags.length){if(window.g_form&&tok&&g_form.getUniqueValue()){var tbl=g_form.getTableName(),key=g_form.getUniqueValue();chain=chain.then(function(){return Promise.all(d.tags.map(function(name){return api('GET','/api/now/table/label?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(name)).then(function(r){var l=r.result&&r.result[0];if(!l)throw 0;return api('POST','/api/now/table/label_entry',{label:l.sys_id,table:tbl,table_key:key})}).then(function(){return'Tag '+name+': applied'}).catch(function(){return'Tag '+name+': FAILED (apply manually)'})}))}).then(function(res){out=out.concat(res)})}else{out.push('Tags (apply manually \\u2014 no session token or unsaved ticket): '+d.tags.join(', '))}}chain.then(function(){alert(out.join('\\n')+'\\n\\nTags apply immediately; other fields need Save. Refresh to see tags.')})})();";
