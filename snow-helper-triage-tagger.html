@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNOW Helper — Triage Tagger</title>
+<!--
+  POPOUT BUTTON — paste this into the main SNOW Helper page (anywhere in the body):
+
+  <button onclick="window.open('snow-helper-triage-tagger.html?popout=1','triageTagger','width=430,height=960,resizable=yes,scrollbars=yes')"
+    style="border:none;border-radius:5px;background:#1F4E79;color:#fff;padding:7px 14px;font-weight:600;cursor:pointer;">
+    Open Triage Tagger &#8599;
+  </button>
+
+  Same-folder relative path assumed; adjust if this file lives elsewhere in the repo.
+  Reusing the window name 'triageTagger' means clicking again focuses the existing
+  popout instead of spawning duplicates.
+-->
+
+<style>
+  /* Static layout styles only. ALL dynamic show/hide and state styling is done
+     via element.style directly in JS — never class toggling (iframe/GH Pages rule). */
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 13px; color: #1c2733; background: transparent;
+    margin: 0; padding: 8px;
+  }
+  .tt-card { border: 1px solid #c9d2dc; border-radius: 8px; background: #fff; max-width: 980px; }
+  .tt-header {
+    padding: 10px 14px; cursor: pointer; user-select: none;
+    background: #1F4E79; color: #fff; border-radius: 7px 7px 0 0;
+    font-weight: 600; font-size: 14px; letter-spacing: .3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tt-body { padding: 14px; }
+  .tt-label { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: #51616f; margin: 14px 0 5px; }
+  .tt-label:first-child { margin-top: 0; }
+  textarea, input[type=text] {
+    width: 100%; border: 1px solid #b8c4cf; border-radius: 5px; padding: 7px 9px;
+    font: inherit; color: inherit;
+  }
+  textarea:focus, input:focus { outline: 2px solid #1F4E79; outline-offset: 0; border-color: #1F4E79; }
+  textarea { resize: vertical; }
+  .tt-hint { font-size: 11.5px; color: #51616f; margin-top: 4px; min-height: 15px; }
+  .tt-group-label { font-size: 10.5px; color: #7a8894; width: 92px; flex: none; text-align: right; padding-right: 10px; padding-top: 5px; }
+  .tt-tagrow { display: flex; align-items: flex-start; margin-bottom: 6px; }
+  .tt-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tt-pill {
+    border: 2px solid transparent; border-radius: 999px; padding: 4px 12px;
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    line-height: 1.2;
+  }
+  .tt-btn {
+    border: 1px solid #b8c4cf; border-radius: 5px; background: #f4f7fa; color: #1c2733;
+    padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .tt-actionbar { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tt-preview {
+    font-family: Consolas, "Courier New", monospace; font-size: 13px;
+    background: #f0f4f8; border: 1px dashed #9fb0c0; border-radius: 5px;
+    padding: 9px 11px; word-break: break-word; min-height: 20px;
+  }
+  .tt-counter { font-size: 11px; font-weight: 700; margin-top: 3px; }
+  .tt-copy {
+    border: none; border-radius: 5px; background: #1F4E79; color: #fff;
+    padding: 7px 14px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .tt-copy:active { background: #163a5c; }
+  .tt-descgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 640px) { .tt-descgrid { grid-template-columns: 1fr; } }
+  .tt-foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  .tt-reset { background: #fff; border: 1px solid #b8c4cf; color: #8a2222; }
+  .tt-bm-code {
+    font-family: Consolas, monospace; font-size: 10.5px; background: #f0f4f8;
+    border: 1px solid #c9d2dc; border-radius: 5px; padding: 8px; word-break: break-all;
+    max-height: 130px; overflow: auto; user-select: all;
+  }
+  .tt-applied { font-size: 12px; margin-top: 4px; }
+  /* Narrow / popout layout (~430px sidebar window) */
+  @media (max-width: 520px) {
+    body { padding: 4px; }
+    .tt-body { padding: 10px; }
+    .tt-tagrow { display: block; margin-bottom: 9px; }
+    .tt-group-label { width: auto; text-align: left; padding: 0 0 3px 2px; }
+    .tt-pill { padding: 3px 10px; font-size: 11.5px; }
+    .tt-descgrid { grid-template-columns: 1fr; }
+    .tt-header { font-size: 13px; padding: 8px 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="tt-card">
+  <div class="tt-header" id="ttHeader">
+    <span id="ttArrow">&#9654;</span> Triage Tagger
+    <span style="font-weight:400; font-size:11.5px; opacity:.85; margin-left:auto;">tag &middot; rewrite &middot; copy</span>
+  </div>
+
+  <div class="tt-body" id="ttBody" style="display:none;">
+
+    <div class="tt-label">Paste requester's short description / description</div>
+    <textarea id="ttPaste" rows="3" placeholder="Paste the original ticket text here — topic and site will be suggested automatically."></textarea>
+    <div class="tt-hint" id="ttSuggestHint"></div>
+
+    <div class="tt-label">Topic tags &nbsp;<span style="font-weight:400;text-transform:none;letter-spacing:0;">(first pick = primary &#9733;, others are extra SN tags — click again to remove)</span></div>
+    <div id="ttTagGroups"></div>
+    <div class="tt-applied" id="ttApplied"></div>
+
+    <div class="tt-label">Site</div>
+    <div class="tt-actionbar" id="ttSites"></div>
+
+    <div class="tt-label">Action</div>
+    <div class="tt-actionbar" id="ttActions"></div>
+
+    <div class="tt-label">Detail</div>
+    <input type="text" id="ttDetail" placeholder="Specific record, user, printer, or workflow — include record/device IDs">
+    <div class="tt-counter" id="ttCounter">0 characters</div>
+
+    <div class="tt-label">Short description preview</div>
+    <div class="tt-preview" id="ttPreview">&nbsp;</div>
+    <div style="margin-top:7px;">
+      <button class="tt-copy" id="ttCopyShort">Copy short description</button>
+      <span class="tt-hint" id="ttCopyShortMsg" style="display:none; margin-left:8px;">Copied</span>
+    </div>
+
+    <div class="tt-label" style="margin-top:20px;">Description builder</div>
+    <div class="tt-descgrid">
+      <div><div class="tt-hint" style="margin:0 0 2px;">CURRENT — what's happening now (exact error text; note attached screenshots)</div>
+        <textarea id="ttCur" rows="3"></textarea></div>
+      <div><div class="tt-hint" style="margin:0 0 2px;">EXPECTED — what should happen instead</div>
+        <textarea id="ttExp" rows="3"></textarea></div>
+      <div><div class="tt-hint" style="margin:0 0 2px;">WHO / WHERE — users, roles, sites, workstation/printer IDs, patient example (MRN + date)</div>
+        <textarea id="ttWho" rows="3"></textarea></div>
+      <div><div class="tt-hint" style="margin:0 0 2px;">RECORDS — Epic record IDs if known (template, OSQ, LVN, LPP...)</div>
+        <textarea id="ttRec" rows="3"></textarea></div>
+    </div>
+    <div style="margin-top:7px;">
+      <button class="tt-copy" id="ttCopyDesc">Copy description</button>
+      <button class="tt-copy" id="ttCopyPayload" style="background:#51616f;">Copy payload for bookmarklet</button>
+      <span class="tt-hint" id="ttCopyDescMsg" style="display:none; margin-left:8px;">Copied</span>
+    </div>
+
+    <div class="tt-foot">
+      <button class="tt-btn tt-reset" id="ttReset">Reset</button>
+      <button class="tt-btn" id="ttBmToggle">Bookmarklet setup</button>
+    </div>
+
+    <div id="ttBmPanel" style="display:none; margin-top:10px;">
+      <div class="tt-hint" style="margin-bottom:4px;">
+        Drag-to-bookmarks isn't possible from plain text, so: create a bookmark, name it
+        <b>SN Fill Triage</b>, and paste this as the URL. On an open INC/SCTASK form, click it,
+        then paste the payload copied above.
+      </div>
+      <div class="tt-bm-code" id="ttBmCode"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     TEAM TAG LIST — from ServiceNow label export (label.xlsx).
+     color = actual SN background color; text = label text color.
+     group = background-color grouping (mirrors handler split).
+     >>> Rename the group display names in GROUP_NAMES below. <<<
+     ============================================================ */
+  var GROUP_NAMES = {
+    green:  "Green group",
+    blue:   "Blue group",
+    pink:   "Pink group",
+    orange: "Orange group",
+    yellow: "Yellow",
+    white:  "Council",
+    purple: "Site",
+    ltblue: "Gui / global",
+    none:   "Fallback"
+  };
+
+  var TAGS = [
+    { name: "3rd Party",       color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "AVS",             color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "DC Help",         color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "Mobile Devices",  color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "Order",           color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "Printing",        color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "Quick Lists",     color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "Rover",           color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "weblinks",        color: "#047510", text: "#ffffff", group: "green"  },
+    { name: "Beds",            color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "BPA",             color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Flowsheet",       color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Narrator",        color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Navigator",       color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "OPA",             color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Rule",            color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Storyboard",      color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Track Board",     color: "#155DFC", text: "#ffffff", group: "blue"   },
+    { name: "Dispo",           color: "#F72A5E", text: "#ffffff", group: "pink"   },
+    { name: "Inbasket",        color: "#F72A5E", text: "#ffffff", group: "pink"   },
+    { name: "Notes",           color: "#F72A5E", text: "#ffffff", group: "pink"   },
+    { name: "Workspace",       color: "#F72A5E", text: "#ffffff", group: "pink"   },
+    { name: "BCA",             color: "#ff9416", text: "#ffffff", group: "orange" },
+    { name: "Report",          color: "#ff9416", text: "#ffffff", group: "orange" },
+    { name: "Security - ASAP", color: "#ff9416", text: "#ffffff", group: "orange" },
+    { name: "ASAP GAP",        color: "#F0E356", text: "#000000", group: "yellow" },
+    { name: "ASAP PC",         color: "#ffffff", text: "#ff0000", group: "white"  },
+    { name: "EMH",             color: "#8908a6", text: "#ffffff", group: "purple" },
+    { name: "DC Move",         color: "#6ab7ef", text: "#1c2733", group: "ltblue" },
+    { name: "State",           color: "#6ab7ef", text: "#1c2733", group: "ltblue" },
+    { name: "Other",           color: "#d7dee5", text: "#1c2733", group: "none"   }
+  ];
+
+  /* Keyword auto-suggest — ordered first-match (priority matters).
+     Ruleset validated against the 6,874-ticket EPIC-ASAP export. */
+  var TOPIC_RULES = [
+    ["Security - ASAP", /security|access request|account access|grant access|needs? access|unable to access|cannot access|can't access|\btemplate\b|subtemplate|\bemp\b|\becl\b|\blpr\b|log ?in|sign[- ]?in|locked out|password|provisioning|user record|application role|security class/],
+    ["Printing",        /print|label|zebra|wristband|dymo/],
+    ["3rd Party",       /sonosite|synch|pocus|ultrasound|qpath|rescuenet|rescue net|lifeflight|life flight|\bwems\b|\bfax\b|matris|zoll|pro ?q ?a|code[- ]?stat|digibox|3rd party|third party/],
+    ["Track Board",     /track ?board|\bfilter|column|status color|\bicon\b|stuck on board/],
+    ["Quick Lists",     /quick ?list|preference list|pref list/],
+    ["Order",           /order set|order panel|orders?\b|\bpanel\b/],
+    ["Narrator",        /narrator/],
+    ["Flowsheet",       /flowsheet/],
+    ["Navigator",       /navigator|triage nav/],
+    ["BPA",             /\bbpa\b|best practice|pop ?up/],
+    ["Inbasket",        /in ?basket/],
+    ["Notes",           /notes?\b|smart ?form|smarttext|smartphrase|smartlink|\blqf\b|documentation/],
+    ["AVS",             /\bavs\b|after visit|discharge instructions|school note|work excuse/],
+    ["DC Help",         /dc help/],
+    ["Dispo",           /\bdispo|disposition|discharge/],
+    ["Workspace",       /workspace/],
+    ["Storyboard",      /storyboard/],
+    ["Report",          /report|dashboard|radar|workbench|slicerdicer|metric/],
+    ["Rover",           /rover/],
+    ["Mobile Devices",  /haiku|canto|\bmobile\b|ipad|iphone|handheld/],
+    ["Beds",            /\bbeds?\b|\badt\b|transfer center|admit|arrival|census|waiting room|registration|check[- ]?in/],
+    ["Rule",            /\brules?\b/],
+    ["BCA",             /\bbca\b|downtime|business continuity/],
+    ["weblinks",        /web ?links?|hyperlink/],
+    ["DC Move",         /dc move|data center/],
+    ["ASAP PC",         /asap pc|partnership council/],
+    ["ASAP GAP",        /asap gap|\bgap\b/],
+    ["EMH",             /\bemh\b/]
+  ];
+
+  var SITE_RULES = [
+    ["EMH",  /\bemh\b/],
+    ["UNV",  /\bunv\b|med center|university|memorial campus|\bmem\b/],
+    ["HA",   /\bha\b|healthalliance|health alliance|leominster/],
+    ["MARL", /\bmarl\b|marlborough/],
+    ["CLIN", /\bclin\b|clinton/],
+    ["UC",   /urgent care/]
+  ];
+
+  var SITES = ["UNV", "EMH", "HA", "MARL", "CLIN", "UC", "ALL"];
+  var ACTIONS = ["Add", "Remove", "Update", "Fix", "Grant", "Build", "Investigate"];
+  var BOILERPLATE = /^(conversion - incident to request:\s*|application optimization & routine maint\.?\s*-\s*)/i;
+
+  /* ---------- state ---------- */
+  var state = {
+    selectedTags: [],   // ordered; [0] is primary
+    site: "",
+    action: "",
+    touched: { tags: false, site: false }
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- collapsible (style.display only) ---------- */
+  $("ttHeader").addEventListener("click", function () {
+    var body = $("ttBody");
+    var open = body.style.display !== "none";
+    body.style.display = open ? "none" : "block";
+    $("ttArrow").innerHTML = open ? "&#9654;" : "&#9660;";
+  });
+
+  /* ---------- build tag pill rows grouped by color ---------- */
+  var groupOrder = ["green", "blue", "pink", "orange", "yellow", "white", "purple", "ltblue", "none"];
+  var pillEls = {};
+  (function buildTags() {
+    var wrap = $("ttTagGroups");
+    groupOrder.forEach(function (g) {
+      var tags = TAGS.filter(function (t) { return t.group === g; });
+      if (!tags.length) return;
+      var row = document.createElement("div");
+      row.className = "tt-tagrow";
+      var lbl = document.createElement("div");
+      lbl.className = "tt-group-label";
+      lbl.textContent = GROUP_NAMES[g] || g;
+      row.appendChild(lbl);
+      var pills = document.createElement("div");
+      pills.className = "tt-pills";
+      tags.forEach(function (t) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "tt-pill";
+        b.textContent = t.name;
+        b.style.background = t.color;
+        b.style.color = t.text;
+        if (t.color.toLowerCase() === "#ffffff") b.style.borderColor = "#ff0000";
+        b.style.opacity = "0.55";
+        b.addEventListener("click", function () { toggleTag(t.name, true); });
+        pills.appendChild(b);
+        pillEls[t.name] = b;
+      });
+      row.appendChild(pills);
+      wrap.appendChild(row);
+    });
+  })();
+
+  function toggleTag(name, byUser) {
+    if (byUser) state.touched.tags = true;
+    var i = state.selectedTags.indexOf(name);
+    if (i >= 0) state.selectedTags.splice(i, 1);
+    else state.selectedTags.push(name);
+    renderTags(); renderPreview();
+  }
+
+  function renderTags() {
+    TAGS.forEach(function (t) {
+      var b = pillEls[t.name];
+      var idx = state.selectedTags.indexOf(t.name);
+      if (idx === -1) {
+        b.style.opacity = "0.55";
+        b.style.boxShadow = "none";
+        b.textContent = t.name;
+      } else {
+        b.style.opacity = "1";
+        b.style.boxShadow = "0 0 0 2px #1c2733";
+        b.textContent = (idx === 0 ? "\u2605 " : "\u2713 ") + t.name;
+      }
+    });
+    var extras = state.selectedTags.slice(1);
+    $("ttApplied").textContent = state.selectedTags.length
+      ? "Apply in ServiceNow: " + state.selectedTags.join(", ") +
+        (extras.length ? "" : "")
+      : "";
+  }
+
+  /* ---------- site & action buttons ---------- */
+  function buildBar(containerId, items, key) {
+    var wrap = $(containerId);
+    items.forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "tt-btn";
+      b.textContent = v;
+      b.addEventListener("click", function () {
+        if (key === "site") state.touched.site = true;
+        state[key] = (state[key] === v) ? "" : v;
+        renderBar(containerId, key);
+        renderPreview();
+      });
+      wrap.appendChild(b);
+    });
+  }
+  function renderBar(containerId, key) {
+    var kids = $(containerId).children;
+    for (var i = 0; i < kids.length; i++) {
+      var on = kids[i].textContent === state[key];
+      kids[i].style.background = on ? "#1F4E79" : "#f4f7fa";
+      kids[i].style.color = on ? "#ffffff" : "#1c2733";
+      kids[i].style.borderColor = on ? "#1F4E79" : "#b8c4cf";
+    }
+  }
+  buildBar("ttSites", SITES, "site");
+  buildBar("ttActions", ACTIONS, "action");
+
+  /* ---------- auto-suggest on paste/input ---------- */
+  $("ttPaste").addEventListener("input", function () {
+    var raw = this.value;
+    var text = raw.toLowerCase();
+    var hints = [];
+
+    if (!state.touched.tags) {
+      for (var i = 0; i < TOPIC_RULES.length; i++) {
+        var m = text.match(TOPIC_RULES[i][1]);
+        if (m) {
+          state.selectedTags = [TOPIC_RULES[i][0]];
+          hints.push("topic \u2192 " + TOPIC_RULES[i][0] + " (matched \u201C" + m[0] + "\u201D)");
+          break;
+        }
+      }
+      renderTags();
+    }
+    if (!state.touched.site) {
+      for (var j = 0; j < SITE_RULES.length; j++) {
+        var s = text.match(SITE_RULES[j][1]);
+        if (s) {
+          state.site = SITE_RULES[j][0];
+          hints.push("site \u2192 " + SITE_RULES[j][0]);
+          break;
+        }
+      }
+      renderBar("ttSites", "site");
+    }
+
+    // Pre-fill detail from first line, boilerplate stripped — only if untouched.
+    var det = $("ttDetail");
+    if (!det.dataset.touched) {
+      var firstLine = raw.split(/\r?\n/)[0].replace(BOILERPLATE, "").trim();
+      det.value = firstLine;
+      updateCounter();
+    }
+    $("ttSuggestHint").textContent = hints.length ? "Suggested: " + hints.join("  \u00B7  ") : "";
+    renderPreview();
+  });
+
+  $("ttDetail").addEventListener("input", function () {
+    this.dataset.touched = "1";
+    updateCounter(); renderPreview();
+  });
+
+  function updateCounter() {
+    var n = $("ttDetail").value.length;
+    var c = $("ttCounter");
+    c.textContent = n + " characters";
+    /* inline style only — no classes */
+    c.style.color = n > 120 ? "#b00020" : (n > 90 ? "#b36b00" : "#51616f");
+  }
+
+  /* ---------- preview + outputs ---------- */
+  function shortDesc() {
+    var parts = [];
+    if (state.selectedTags[0]) parts.push(state.selectedTags[0]);
+    if (state.site) parts.push(state.site);
+    var head = parts.join(" | ");
+    var act = state.action ? state.action + ": " : "";
+    var det = $("ttDetail").value.trim();
+    var tail = act + det;
+    if (head && tail) return head + " | " + tail;
+    return head || tail;
+  }
+  function renderPreview() {
+    var v = shortDesc();
+    $("ttPreview").textContent = v || "\u00A0";
+  }
+
+  function longDesc() {
+    var lines = [];
+    var cur = $("ttCur").value.trim(), exp = $("ttExp").value.trim(),
+        who = $("ttWho").value.trim(), rec = $("ttRec").value.trim(),
+        orig = $("ttPaste").value.trim();
+    if (cur) lines.push("CURRENT: " + cur);
+    if (exp) lines.push("EXPECTED: " + exp);
+    if (who) lines.push("WHO/WHERE: " + who);
+    if (rec) lines.push("RECORDS: " + rec);
+    if (orig) lines.push("", "ORIGINAL REQUEST:", orig);
+    return lines.join("\n");
+  }
+
+  function copyText(text, msgId) {
+    function done() {
+      var m = $(msgId);
+      m.style.display = "inline";
+      setTimeout(function () { m.style.display = "none"; }, 1600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    } else { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text) { /* iframe-safe fallback */
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  $("ttCopyShort").addEventListener("click", function () { copyText(shortDesc(), "ttCopyShortMsg"); });
+  $("ttCopyDesc").addEventListener("click", function () { copyText(longDesc(), "ttCopyDescMsg"); });
+  $("ttCopyPayload").addEventListener("click", function () {
+    copyText(JSON.stringify({ short_description: shortDesc(), description: longDesc(), tags: state.selectedTags }), "ttCopyDescMsg");
+  });
+
+  /* ---------- reset ---------- */
+  $("ttReset").addEventListener("click", function () {
+    state.selectedTags = []; state.site = ""; state.action = "";
+    state.touched = { tags: false, site: false };
+    ["ttPaste","ttDetail","ttCur","ttExp","ttWho","ttRec"].forEach(function (id) { $(id).value = ""; });
+    delete $("ttDetail").dataset.touched;
+    $("ttSuggestHint").textContent = "";
+    renderTags(); renderBar("ttSites","site"); renderBar("ttActions","action");
+    updateCounter(); renderPreview();
+  });
+
+  /* ---------- bookmarklet ---------- */
+  $("ttBmToggle").addEventListener("click", function () {
+    var p = $("ttBmPanel");
+    p.style.display = p.style.display === "none" ? "block" : "none";
+  });
+  var BM = "javascript:(function(){var p=prompt('Paste Triage Tagger payload:');if(!p)return;var d;try{d=JSON.parse(p)}catch(e){alert('Not valid payload JSON');return}function fill(f,v){if(!v)return!1;if(window.g_form){try{g_form.setValue(f,v);return!0}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');if(el){el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}));return!0}return!1}var a=fill('short_description',d.short_description);var b=fill('description',d.description);alert('Short desc: '+(a?'filled':'NOT filled')+'\\nDescription: '+(b?'filled':'NOT filled')+'\\nReview and save in ServiceNow.'+(d.tags&&d.tags.length?'\\nTags to apply: '+d.tags.join(', '):''))})();";
+  $("ttBmCode").textContent = BM;
+
+  /* ---------- init ---------- */
+  // Popout mode: opened via window.open from SNOW Helper's main page (or ?popout=1)
+  // — start expanded so the sidebar is ready to use immediately.
+  if (window.opener || /[?&]popout=1/.test(location.search)) {
+    $("ttBody").style.display = "block";
+    $("ttArrow").innerHTML = "&#9660;";
+  }
+  updateCounter(); renderPreview();
+})();
+</script>
+</body>
+</html>
