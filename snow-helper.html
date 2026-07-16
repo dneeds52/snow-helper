@@ -49,6 +49,13 @@ a.s-link svg{width:14px;height:14px;flex-shrink:0;opacity:.6;}
 .remove-user:hover{color:#f87171;}
 a.s-link.purple{position:relative;}
 a.s-link.purple:hover .remove-user{display:block;}
+/* TRIAGE TAGGER LAUNCHER */
+.tt-launch{display:flex;align-items:center;gap:10px;margin:6px 10px 10px;padding:10px 12px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,rgba(167,139,250,.16),rgba(103,232,249,.10));border:1px solid rgba(167,139,250,.55);box-shadow:0 0 10px rgba(167,139,250,.12);transition:box-shadow .18s,transform .18s,border-color .18s;}
+.tt-launch:hover{box-shadow:0 0 18px rgba(103,232,249,.35);border-color:#67e8f9;transform:translateY(-1px);}
+.tt-dots{display:inline-grid;grid-template-columns:repeat(2,10px);gap:3px;flex-shrink:0;}
+.tt-dots span{width:10px;height:10px;border-radius:50%;}
+.tt-launch-title{display:block;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;color:#e2e8f0;letter-spacing:.06em;}
+.tt-launch-sub{display:block;font-size:.6rem;color:#94a3b8;margin-top:2px;letter-spacing:.02em;}
 /* MAIN CONTENT */
 .main{flex:1;display:flex;flex-direction:column;}
 .content{flex:1;padding:20px;}
@@ -313,6 +320,20 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
   <nav class="sidebar">
     <div class="s-label">Home</div>
     <a class="s-link blue" href="https://umassmemorial.service-now.com" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ServiceNow Home</a>
+    <a class="tt-launch" href="snow-helper-triage-tagger.html?popout=1"
+       onclick="launchConfetti(this);window.open(this.href,'triageTagger','width=430,height=960,resizable=yes,scrollbars=yes');return false;"
+       title="Open the Triage Tagger as a sidebar window">
+      <span class="tt-dots">
+        <span style="background:#047510;"></span>
+        <span style="background:#155DFC;"></span>
+        <span style="background:#F72A5E;"></span>
+        <span style="background:#ff9416;"></span>
+      </span>
+      <span>
+        <span class="tt-launch-title">TRIAGE TAGGER &#8599;</span>
+        <span class="tt-launch-sub">grab &middot; tag &middot; draft &middot; fill</span>
+      </span>
+    </a>
     <div class="acc-wrap open" id="acc-users">
       <div class="acc-header" onclick="toggleAcc('acc-users')"><span class="acc-label">Users</span><span class="acc-arrow">&#9662;</span></div>
       <div class="acc-body">
@@ -336,10 +357,6 @@ function removeUser(e,btn){e.preventDefault();e.stopPropagation();if(confirm("Re
     <div class="acc-wrap open" id="acc-queue">
       <div class="acc-header" onclick="toggleAcc('acc-queue')"><span class="acc-label">Queue Views</span><span class="acc-arrow">&#9662;</span></div>
       <div class="acc-body">
-       <button onclick="window.open('snow-helper-triage-tagger.html?popout=1','triageTagger','width=430,height=960,resizable=yes,scrollbars=yes')"
-  style="border:none;border-radius:5px;background:#1F4E79;color:#fff;padding:7px 14px;font-weight:600;cursor:pointer;">
-  Open Triage Tagger ↗
-</button> 
     <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^u_rankingBETWEEN1@5^NQsys_class_name=incident^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^u_rankingBETWEEN1@5^GROUPBYassigned_to&sysparm_first_row=1" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/><path d="M4 22h16"/></svg>Top 5</a>
     <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=ref_change_request.start_dateRELATIVEGT@dayofweek@ago@14^assignment_group=b0f881a7db916e00cdb372fc0f961973^cmdb_ci=c6434271dbf27e00cdb372fc0f9619f8&sysparm_first_row=1" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>Changes Past 2 Weeks</a>
     <a class="s-link amber" href="https://umassmemorial.service-now.com/task_list.do?sysparm_query=NQsys_class_name=sc_task^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^orderBETWEEN80@89^NQsys_class_name=incident^active=true^assignment_group=b0f881a7db916e00cdb372fc0f961973^orderBETWEEN80@89" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>ASAP PC</a>
