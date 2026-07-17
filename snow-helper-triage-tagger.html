@@ -191,7 +191,6 @@
     orange: "Kelsy +",
     yellow: "Yellow",
     white:  "Council",
-    purple: "Site",
     ltblue: "Gui / global",
     none:   "Fallback"
   };
@@ -258,7 +257,6 @@
     { name: "Security - ASAP", color: "#ff9416", text: "#ffffff", group: "orange" },
     { name: "ASAP GAP",        color: "#F0E356", text: "#000000", group: "yellow" },
     { name: "ASAP PC",         color: "#ffffff", text: "#ff0000", group: "white"  },
-    { name: "EMH",             color: "#8908a6", text: "#ffffff", group: "purple" },
     { name: "DC Move",         color: "#6ab7ef", text: "#1c2733", group: "ltblue" },
     { name: "State",           color: "#6ab7ef", text: "#1c2733", group: "ltblue" },
     { name: "Other",           color: "#d7dee5", text: "#1c2733", group: "none"   }
@@ -294,11 +292,9 @@
     ["DC Move",         /dc move|data center/],
     ["ASAP PC",         /asap pc|partnership council/],
     ["ASAP GAP",        /asap gap|\bgap\b/],
-    ["EMH",             /\bemh\b/]
   ];
 
   var SITE_RULES = [
-    ["EMH",   /\bemh\b/],
     ["UNV",   /\bunv\b|university campus|university/],
     ["MEM",   /\bmem\b|memorial campus|memorial/],
     ["MARL",  /\bmarl\b|marlborough/],
@@ -317,7 +313,7 @@
     [/harrington|\bhh\b/, ["HHSB", "HHWEB"], "Harrington"]
   ];
 
-  var SITES = ["UNV", "MEM", "MARL", "HALC", "CLIN", "HHSB", "HHWEB", "MRMC", "NV", "UC", "EMH", "ALL"];
+  var SITES = ["UNV", "MEM", "MARL", "HALC", "CLIN", "HHSB", "HHWEB", "MRMC", "NV", "UC", "ALL"];
   var ACTIONS = ["Add", "Remove", "Update", "Fix", "Grant", "Build", "Investigate"];
   var BOILERPLATE = /^(conversion - incident to request:\s*|application optimization & routine maint\.?\s*-\s*)/i;
 
@@ -333,6 +329,13 @@
         .trim();
     } while (line !== prev);
     return line;
+  }
+
+  // Title-case: capitalize first letter of each word (like Clean Ticket bookmarklet).
+  function titleCase(s) {
+    return s.replace(/\w\S*/g, function(w) {
+      return w.charAt(0).toUpperCase() + w.substr(1);
+    });
   }
 
   // Remove mentions of the selected site from text (the Site slot already
@@ -642,7 +645,7 @@
     if (state.site) parts.push(state.site);
     var head = parts.join(" | ");
     var act = state.action ? state.action + ": " : "";
-    var det = $("ttDetail").value.trim();
+    var det = titleCase($("ttDetail").value.trim());
     var tail = act + det;
     if (head && tail) return head + " | " + tail;
     return head || tail;
@@ -726,7 +729,7 @@
   var BM_GRAB = "javascript:(function(){function rd(f){if(window.g_form){try{var v=g_form.getValue(f);if(v)return v}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');return el?el.value:''}function copy(t){function done(){alert('Ticket text + activity copied \\u2014 paste it into the Triage Tagger.')}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){prompt('Copy this (Ctrl+C), then paste into the Triage Tagger:',t)})}else{prompt('Copy this (Ctrl+C), then paste into the Triage Tagger:',t)}}var s=rd('short_description'),d=rd('description');var base=(s+(d?'\\n'+d:'')).trim();if(!base){alert('Could not read the ticket fields \\u2014 open an INC/SCTASK form first.');return}var tok=window.g_ck||'';if(window.g_form&&tok&&g_form.getUniqueValue()){fetch('/api/now/table/sys_journal_field?sysparm_query=element_id='+g_form.getUniqueValue()+'^elementINwork_notes,comments^ORDERBYDESCsys_created_on&sysparm_limit=20&sysparm_fields=element,value,sys_created_on,sys_created_by',{headers:{'Accept':'application/json','X-UserToken':tok}}).then(function(r){return r.json()}).then(function(j){var acts=(j.result||[]).map(function(e){return'['+(e.element==='work_notes'?'work note':'comment')+' '+e.sys_created_on+' '+e.sys_created_by+'] '+e.value});copy(base+(acts.length?'\\n\\n--- ACTIVITY ---\\n'+acts.join('\\n'):''))}).catch(function(){copy(base)})}else{copy(base)}})();"
   $("ttBmCodeGrab").textContent = BM_GRAB;
 
-  var BM = "javascript:(function(){var p=prompt('Paste Triage Tagger payload:');if(!p)return;var d;try{d=JSON.parse(p)}catch(e){alert('Not valid payload JSON');return}var out=[];function fill(f,v){if(!v)return!1;if(window.g_form){try{g_form.setValue(f,v);return!0}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');if(el){el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}));return!0}return!1}out.push('Short desc: '+(fill('short_description',d.short_description)?'filled':'NOT filled'));out.push('Description: '+(fill('description',d.description)?'filled':'NOT filled'));(d.extras||[]).forEach(function(x){out.push(x.field+': '+(fill(x.field,x.value)?'set to '+x.value:'NOT set (check field name)'))});var tok=window.g_ck||'';function api(m,u,b){return fetch(u,{method:m,headers:{'Content-Type':'application/json','Accept':'application/json','X-UserToken':tok},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json()})}var chain=Promise.resolve();if(d.ci){chain=chain.then(function(){return api('GET','/api/now/table/cmdb_ci?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(d.ci))}).then(function(r){var rec=r.result&&r.result[0];if(rec&&window.g_form){g_form.setValue('cmdb_ci',rec.sys_id,rec.name);out.push('CI: set to '+rec.name)}else{out.push('CI: \"'+d.ci+'\" not found')}}).catch(function(){out.push('CI: lookup error')})}if(d.tags&&d.tags.length){if(window.g_form&&tok&&g_form.getUniqueValue()){var tbl=g_form.getTableName(),key=g_form.getUniqueValue();chain=chain.then(function(){return Promise.all(d.tags.map(function(name){return api('GET','/api/now/table/label?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(name)).then(function(r){var l=r.result&&r.result[0];if(!l)throw 0;return api('POST','/api/now/table/label_entry',{label:l.sys_id,table:tbl,table_key:key})}).then(function(){return'Tag '+name+': applied'}).catch(function(){return'Tag '+name+': FAILED (apply manually)'})}))}).then(function(res){out=out.concat(res)})}else{out.push('Tags (apply manually \\u2014 no session token or unsaved ticket): '+d.tags.join(', '))}}chain.then(function(){alert(out.join('\\n')+'\\n\\nTags apply immediately; other fields need Save. Refresh to see tags.')})})();";
+  var BM = "javascript:(function(){var p=prompt('Paste Triage Tagger payload:');if(!p)return;var d;try{d=JSON.parse(p)}catch(e){alert('Not valid payload JSON');return}var out=[];function fill(f,v){if(!v)return!1;if(window.g_form){try{g_form.setValue(f,v);return!0}catch(e){}}var el=document.querySelector('[id$=\".'+f+'\"], [name$=\".'+f+'\"]');if(el){el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}));return!0}return!1}out.push('Short desc: '+(fill('short_description',d.short_description)?'filled':'NOT filled'));out.push('Description: '+(fill('description',d.description)?'filled':'NOT filled'));(d.extras||[]).forEach(function(x){out.push(x.field+': '+(fill(x.field,x.value)?'set to '+x.value:'NOT set (check field name)'))});var tok=window.g_ck||'';function api(m,u,b){return fetch(u,{method:m,headers:{'Content-Type':'application/json','Accept':'application/json','X-UserToken':tok},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json()})}var chain=Promise.resolve();if(d.ci){chain=chain.then(function(){return api('GET','/api/now/table/cmdb_ci?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(d.ci))}).then(function(r){var rec=r.result&&r.result[0];if(rec&&window.g_form){g_form.setValue('cmdb_ci',rec.sys_id,rec.name);out.push('CI: set to '+rec.name)}else{out.push('CI: \"'+d.ci+'\" not found')}}).catch(function(){out.push('CI: lookup error')})}if(d.tags&&d.tags.length){if(window.g_form&&tok&&g_form.getUniqueValue()){var tbl=g_form.getTableName(),key=g_form.getUniqueValue();chain=chain.then(function(){return Promise.all(d.tags.map(function(name){return api('GET','/api/now/table/label?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(name)+'%5EownerIN5bcef6801bfb4950d96b531b234bcbb3,542e894edbddaa00cdb372fc0f961903,042e494edbddaa00cdb372fc0f9619cc,2e0e454edbddaa00cdb372fc0f9619c3').then(function(r){var l=r.result&&r.result[0];if(!l)throw 0;return api('POST','/api/now/table/label_entry',{label:l.sys_id,table:tbl,table_key:key})}).then(function(){return'Tag '+name+': applied'}).catch(function(){return'Tag '+name+': FAILED (apply manually)'})}))}).then(function(res){out=out.concat(res)})}else{out.push('Tags (apply manually \\u2014 no session token or unsaved ticket): '+d.tags.join(', '))}}chain.then(function(){alert(out.join('\\n')+'\\n\\nTags apply immediately; other fields need Save. Refresh to see tags.')})})();";
   $("ttBmCode").textContent = BM;
 
   /* ---------- init ---------- */
