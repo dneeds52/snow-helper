@@ -130,7 +130,11 @@ var menu=document.createElement('div');
 menu.id='snMenu';
 menu.style.cssText='position:fixed;top:60px;right:20px;z-index:99999;background:#1a1a2e;border:1px solid #a78bfa;border-radius:12px;padding:14px;min-width:240px;width:260px;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:auto';
 
-menu.innerHTML='<div id="snMenuHdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:move;user-select:none"><span style="font-size:.8rem;font-weight:700;color:#a78bfa;letter-spacing:.08em">SNOW HELPER</span><button id="snMenuClose" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1.1rem;padding:2px 6px">✕</button></div>';
+menu.innerHTML='<div id="snMenuHdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:move;user-select:none"><span style="font-size:.8rem;font-weight:700;color:#a78bfa;letter-spacing:.08em">SNOW HELPER</span><div style="display:flex;gap:4px"><button id="snMenuLayout" style="background:none;border:1px solid #2a2a3e;color:#64748b;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:4px" title="Toggle layout">☰</button><button id="snMenuClose" style="background:none;border:1px solid #2a2a3e;color:#64748b;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:4px">✕</button></div></div>';
+var btnWrap=document.createElement('div');
+btnWrap.id='snMenuBtns';
+btnWrap.style.cssText='display:flex;flex-direction:column;gap:5px';
+menu.appendChild(btnWrap);
 
 var colors={
   'Grab Ticket':  {bg:'rgba(52,211,153,.12)',border:'#34d399',hover:'#34d399'},
@@ -178,7 +182,7 @@ tools.forEach(function(t){
   }else{
     b.onclick=function(){t.fn(this)};
   }
-  menu.appendChild(b);
+  btnWrap.appendChild(b);
 });
 
 document.body.appendChild(menu);
@@ -190,5 +194,24 @@ var dx=0,dy=0,mx=0,my=0,dragging=false;
 hdr.onmousedown=function(e){if(e.target.id==='snMenuClose')return;dragging=true;mx=e.clientX;my=e.clientY;e.preventDefault()};
 document.addEventListener('mousemove',function(e){if(!dragging)return;dx=e.clientX-mx;dy=e.clientY-my;mx=e.clientX;my=e.clientY;menu.style.top=(menu.offsetTop+dy)+'px';menu.style.right='auto';menu.style.left=(menu.offsetLeft+dx)+'px'});
 document.addEventListener('mouseup',function(){dragging=false});
+
+/* Layout toggle */
+var horizontal=false;
+document.getElementById('snMenuLayout').onclick=function(e){
+  e.stopPropagation();
+  horizontal=!horizontal;
+  var bw=document.getElementById('snMenuBtns');
+  if(horizontal){
+    menu.style.width='auto';menu.style.minWidth='auto';menu.style.maxWidth='90vw';
+    bw.style.flexDirection='row';bw.style.flexWrap='wrap';
+    bw.querySelectorAll('button').forEach(function(b){b.style.width='auto';b.style.padding='8px 14px'});
+    this.textContent='☰';this.title='Switch to list view';
+  }else{
+    menu.style.width='260px';menu.style.minWidth='240px';menu.style.maxWidth='';
+    bw.style.flexDirection='column';bw.style.flexWrap='nowrap';
+    bw.querySelectorAll('button').forEach(function(b){b.style.width='100%';b.style.padding='10px 12px'});
+    this.textContent='⊞';this.title='Switch to grid view';
+  }
+};
 
 })();
