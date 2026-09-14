@@ -61,11 +61,13 @@ function emailTicket(btn){
   var sysId=gf.getUniqueValue()||'';
   var tbl=gf.getTableName()||'sc_task';
   var link=location.origin+'/nav_to.do?uri='+tbl+'.do?sys_id='+sysId;
-  var req='';
-  try{req=gf.getValue('request.requested_for_label')||gf.getDisplayValue('caller_id')||''}catch(e){}
-  var fn=(req.split(' ')[0])||'there';
+  var reqName='';
+  try{reqName=gf.getDisplayValue('requested_for')||gf.getDisplayValue('caller_id')||''}catch(e){}
+  var fn=(reqName.split(' ')[0])||'there';
+  var reqNum='';
+  try{reqNum=gf.getDisplayValue('request')||''}catch(e){}
   var nl='\r\n';
-  var subj=num+' '+sd;
+  var subj=reqNum?(reqNum+' / '+num+' '+sd):(num+' '+sd);
   var body='Hi '+fn+'!'+nl+nl+'=== EMAIL INTRO GOES HERE ==='+nl+nl+'________________________________________'+nl+nl+num+' '+sd+nl+link+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
   navigator.clipboard.writeText('SUBJECT: '+subj+nl+nl+body).then(function(){confetti();flash(btn,'Copied!')});
 }
