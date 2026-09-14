@@ -107,21 +107,27 @@ function fillTriage(btn){
 }
 
 function staleCheck(btn){
+  if(!tok){flash(btn,'No SN session');return}
+  flash(btn,'Checking...');
   var d=new Date();d.setDate(d.getDate()-7);
-  var cutoff=d.toISOString().replace('T',' ').substring(0,19);
+  var y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');
+  var hr=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0'),se=String(d.getSeconds()).padStart(2,'0');
+  var cutoff=y+'-'+mo+'-'+da+' '+hr+':'+mi+':'+se;
   var q='active=true^assignment_group='+Q+'^orderBETWEEN50@59^sys_updated_on<'+cutoff;
   var f='sys_id,number,short_description,order,sys_updated_on';
   Promise.all([
-    api('GET','/api/now/table/sc_task?sysparm_query='+encodeURIComponent(q)+'&sysparm_fields='+f+'&sysparm_limit=100'),
-    api('GET','/api/now/table/incident?sysparm_query='+encodeURIComponent(q)+'&sysparm_fields='+f+'&sysparm_limit=100')
+    api('GET','/api/now/table/sc_task?sysparm_query='+encodeURIComponent(q)+'&sysparm_fields='+f+'&sysparm_display_value=true&sysparm_limit=100'),
+    api('GET','/api/now/table/incident?sysparm_query='+encodeURIComponent(q)+'&sysparm_fields='+f+'&sysparm_display_value=true&sysparm_limit=100'),
+    api('GET','/api/now/table/change_request?sysparm_query='+encodeURIComponent(q)+'&sysparm_fields='+f+'&sysparm_display_value=true&sysparm_limit=100')
   ]).then(function(results){
-    var items=[];results.forEach(function(r){(r.result||[]).forEach(function(t){items.push(t)})});
+    var items=[];results.forEach(function(r){if(r.result){r.result.forEach(function(t){items.push(t)})}});
     if(!items.length){flash(btn,'All clear!');return}
-    var lines=items.map(function(t,i){return(i+1)+'. '+t.number+' (Order '+t.order+', updated '+t.sys_updated_on.substring(0,10)+')\n   '+t.short_description.substring(0,50)});
-    if(!confirm('Found '+items.length+' stale blocked item(s):\n\n'+lines.join('\n\n')+'\n\nOK = move to Update Needed\nCancel = leave as is'))return;
-    Promise.all(items.map(function(t){var digits=(t.order||'50').toString().replace(/\D/g,'')||'50';var nw='1'+digits.slice(-1);var tbl=/^INC/.test(t.number)?'incident':'sc_task';
+    var lines=items.map(function(t,i){var upd=(t.sys_updated_on||'unknown');if(upd.length>10)upd=upd.substring(0,10);return(i+1)+'. '+t.number+'\n   Order: '+(t.order||'?')+' | Updated: '+upd+'\n   '+(t.short_description||'').substring(0,50)});
+    if(!confirm('Found '+items.length+' stale blocked item(s) (not updated since '+cutoff.substring(0,10)+'):\n\n'+lines.join('\n\n')+'\n\nOK = move to Update Needed\nCancel = leave as is'))return;
+    Promise.all(items.map(function(t){var digits=(t.order||'50').toString().replace(/\D/g,'')||'50';var nw='1'+digits.slice(-1);
+      var tbl=/^INC/.test(t.number)?'incident':(/^CHG/.test(t.number)?'change_request':'sc_task');
       return api('PATCH','/api/now/table/'+tbl+'/'+t.sys_id,{order:nw}).then(function(){return t.number+': done'}).catch(function(){return t.number+': FAILED'})})).then(function(res){alert('Done:\n\n'+res.join('\n'))});
-  }).catch(function(){flash(btn,'Error')});
+  }).catch(function(e){flash(btn,'Error: '+e)});
 }
 
 /* ===== BUILD THE MENU ===== */
