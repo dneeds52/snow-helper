@@ -128,32 +128,51 @@ function staleCheck(btn){
 
 var menu=document.createElement('div');
 menu.id='snMenu';
-menu.style.cssText='position:fixed;top:60px;right:20px;z-index:99999;background:#1a1a2e;border:1px solid #a78bfa;border-radius:10px;padding:12px;width:200px;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+menu.style.cssText='position:fixed;top:60px;right:20px;z-index:99999;background:#1a1a2e;border:1px solid #a78bfa;border-radius:12px;padding:14px;min-width:240px;width:260px;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:auto';
 
-menu.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:.7rem;font-weight:700;color:#a78bfa;letter-spacing:.08em">SNOW HELPER</span><button id="snMenuClose" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1rem;padding:0 4px">✕</button></div>';
+menu.innerHTML='<div id="snMenuHdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:move;user-select:none"><span style="font-size:.8rem;font-weight:700;color:#a78bfa;letter-spacing:.08em">SNOW HELPER</span><button id="snMenuClose" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1.1rem;padding:2px 6px">✕</button></div>';
+
+var colors={
+  'Grab Ticket':  {bg:'rgba(52,211,153,.12)',border:'#34d399',hover:'#34d399'},
+  'Save Title':   {bg:'rgba(56,189,248,.12)',border:'#38bdf8',hover:'#38bdf8'},
+  'Copy Info':    {bg:'rgba(96,165,250,.12)',border:'#60a5fa',hover:'#60a5fa'},
+  'Email':        {bg:'rgba(251,191,36,.12)',border:'#fbbf24',hover:'#fbbf24'},
+  'Clean Ticket': {bg:'rgba(167,139,250,.12)',border:'#a78bfa',hover:'#a78bfa'},
+  'Fill Triage':  {bg:'rgba(244,114,182,.12)',border:'#f472b6',hover:'#f472b6'},
+  'Stale Check':  {bg:'rgba(248,113,113,.12)',border:'#f87171',hover:'#f87171'},
+  'PC Review':    {bg:'rgba(52,211,153,.12)',border:'#34d399',hover:'#34d399'},
+  'TaskMaster':   {bg:'rgba(251,146,60,.12)',border:'#fb923c',hover:'#fb923c'}
+};
 
 var tools=[
-  {label:'Grab Ticket',icon:'📋',fn:grabTicket,need:'ticket'},
-  {label:'Save Title',icon:'💾',fn:saveTicket,need:'ticket'},
-  {label:'Copy Info',icon:'🔗',fn:copyTicket,need:'ticket'},
-  {label:'Email',icon:'✉️',fn:emailTicket,need:'ticket'},
-  {label:'Clean Ticket',icon:'🧹',fn:cleanTicket,need:'ticket'},
-  {label:'Fill Triage',icon:'🏷️',fn:fillTriage,need:'ticket'},
-  {label:'Stale Check',icon:'⏰',fn:staleCheck,need:'any'},
-  {label:'TaskMaster',icon:'🏅',fn:null,need:'list'}
+  {label:'Grab Ticket',icon:'📋',fn:grabTicket},
+  {label:'Save Title',icon:'💾',fn:saveTicket},
+  {label:'Copy Info',icon:'🔗',fn:copyTicket},
+  {label:'Email',icon:'✉️',fn:emailTicket},
+  {label:'Clean Ticket',icon:'🧹',fn:cleanTicket},
+  {label:'Fill Triage',icon:'🏷️',fn:fillTriage},
+  {label:'Stale Check',icon:'⏰',fn:staleCheck},
+  {label:'PC Review',icon:'📋',fn:null},
+  {label:'TaskMaster',icon:'🏅',fn:null}
 ];
 
 tools.forEach(function(t){
+  var c=colors[t.label]||{bg:'transparent',border:'#2a2a3e',hover:'#a78bfa'};
   var b=document.createElement('button');
-  b.style.cssText='display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;margin-bottom:4px;border:1px solid #2a2a3e;border-radius:6px;background:transparent;color:#e2e8f0;font:inherit;font-size:.78rem;cursor:pointer;text-align:left;transition:border-color .15s';
-  b.innerHTML=t.icon+' '+t.label;
-  b.onmouseover=function(){this.style.borderColor='#a78bfa';this.style.color='#a78bfa'};
-  b.onmouseout=function(){this.style.borderColor='#2a2a3e';this.style.color='#e2e8f0'};
+  b.style.cssText='display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;margin-bottom:5px;border:1px solid '+c.border+';border-radius:8px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:.92rem;font-weight:500;cursor:pointer;text-align:left;transition:all .15s';
+  b.innerHTML='<span style="font-size:1.1rem">'+t.icon+'</span> '+t.label;
+  b.onmouseover=function(){this.style.background=c.bg.replace('.12','.25');this.style.color=c.hover;this.style.transform='translateX(2px)'};
+  b.onmouseout=function(){this.style.background=c.bg;this.style.color='#e2e8f0';this.style.transform='none'};
   if(t.label==='TaskMaster'){
     b.onclick=function(){menu.remove();
-      /* Inject TaskMaster inline since it needs the list DOM */
       var s=document.createElement('script');
       s.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();
+      document.body.appendChild(s);
+    };
+  }else if(t.label==='PC Review'){
+    b.onclick=function(){menu.remove();
+      var s=document.createElement('script');
+      s.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();
       document.body.appendChild(s);
     };
   }else{
@@ -166,10 +185,9 @@ document.body.appendChild(menu);
 document.getElementById('snMenuClose').onclick=function(){menu.remove()};
 
 /* Make draggable */
-var hdr=menu.firstChild;
+var hdr=document.getElementById('snMenuHdr');
 var dx=0,dy=0,mx=0,my=0,dragging=false;
-hdr.style.cursor='move';
-hdr.onmousedown=function(e){dragging=true;mx=e.clientX;my=e.clientY;e.preventDefault()};
+hdr.onmousedown=function(e){if(e.target.id==='snMenuClose')return;dragging=true;mx=e.clientX;my=e.clientY;e.preventDefault()};
 document.addEventListener('mousemove',function(e){if(!dragging)return;dx=e.clientX-mx;dy=e.clientY-my;mx=e.clientX;my=e.clientY;menu.style.top=(menu.offsetTop+dy)+'px';menu.style.right='auto';menu.style.left=(menu.offsetLeft+dx)+'px'});
 document.addEventListener('mouseup',function(){dragging=false});
 
