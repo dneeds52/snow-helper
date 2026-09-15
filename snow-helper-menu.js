@@ -1,9 +1,9 @@
 /* SNOW Helper Menu — loaded by a single bookmarklet from any SN page.
    Hosted at: https://dneeds52.github.io/snow-helper/snow-helper-menu.js
-   Bookmarklet: javascript:(function(){if(document.getElementById('snMenu')){document.getElementById('snMenu').remove();return}var s=document.createElement('script');s.src='https://dneeds52.github.io/snow-helper/snow-helper-menu.js?t='+Date.now();document.body.appendChild(s)})();
+   Bookmarklet: javascript:(function(){if(document.getElementById('snMenu'))returnvar s=document.createElement('script');s.src='https://dneeds52.github.io/snow-helper/snow-helper-menu.js?t='+Date.now();document.body.appendChild(s)})();
 */
 (function(){
-if(document.getElementById('snMenu')){document.getElementById('snMenu').remove();return}
+if(document.getElementById('snMenu'))return
 
 var tok=window.g_ck||'';
 var gf=window.g_form||null;
@@ -134,12 +134,16 @@ function staleCheck(btn){
 
 var menu=document.createElement('div');
 menu.id='snMenu';
-menu.style.cssText='position:fixed;top:10px;right:20px;z-index:99999;background:#1a1a2e;border:1px solid #a78bfa;border-radius:12px;padding:14px;min-width:240px;width:260px;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:auto';
+menu.style.cssText='background:#1a1a2e;border-bottom:2px solid #a78bfa;padding:8px 14px;font-family:system-ui,sans-serif;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;z-index:99999;position:relative';
 
-menu.innerHTML='<div id="snMenuHdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:move;user-select:none"><span style="font-size:.8rem;font-weight:700;color:#a78bfa;letter-spacing:.08em">SNOW HELPER</span><div style="display:flex;gap:4px"><button id="snMenuLayout" style="background:none;border:1px solid #2a2a3e;color:#64748b;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:4px" title="Toggle layout">☰</button><button id="snMenuClose" style="background:none;border:1px solid #2a2a3e;color:#64748b;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:4px">✕</button></div></div>';
+var label=document.createElement('span');
+label.style.cssText='font-size:.75rem;font-weight:700;color:#a78bfa;letter-spacing:.08em;white-space:nowrap;margin-right:4px';
+label.textContent='SNOW';
+menu.appendChild(label);
+
 var btnWrap=document.createElement('div');
 btnWrap.id='snMenuBtns';
-btnWrap.style.cssText='display:flex;flex-direction:column;gap:5px';
+btnWrap.style.cssText='display:flex;flex-direction:row;gap:4px;flex-wrap:nowrap;align-items:center;flex:1';
 menu.appendChild(btnWrap);
 
 var colors={
@@ -169,7 +173,7 @@ var tools=[
 tools.forEach(function(t){
   var c=colors[t.label]||{bg:'transparent',border:'#2a2a3e',hover:'#a78bfa'};
   var b=document.createElement('button');
-  b.style.cssText='display:flex;align-items:center;gap:10px;width:100%;padding:5px 10px;margin-bottom:3px;border:1px solid '+c.border+';border-radius:8px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:1rem;font-weight:500;cursor:pointer;text-align:left;transition:all .15s';
+  b.style.cssText='display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid '+c.border+';border-radius:6px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s';
   b.innerHTML='<span style="font-size:1.1rem">'+t.icon+'</span> '+t.label;
   b.onmouseover=function(){this.style.background=c.bg.replace('.12','.25');this.style.color=c.hover;this.style.transform='translateX(2px)'};
   b.onmouseout=function(){this.style.background=c.bg;this.style.color='#e2e8f0';this.style.transform='none'};
@@ -183,35 +187,11 @@ tools.forEach(function(t){
   btnWrap.appendChild(b);
 });
 
-document.body.appendChild(menu);
-document.getElementById('snMenuClose').onclick=function(){menu.remove()};
+document.body.insertBefore(menu,document.body.firstChild);
 
-/* Make draggable */
-var hdr=document.getElementById('snMenuHdr');
-var dx=0,dy=0,mx=0,my=0,dragging=false;
-hdr.onmousedown=function(e){if(e.target.id==='snMenuClose')return;dragging=true;mx=e.clientX;my=e.clientY;e.preventDefault()};
-document.addEventListener('mousemove',function(e){if(!dragging)return;dx=e.clientX-mx;dy=e.clientY-my;mx=e.clientX;my=e.clientY;menu.style.top=(menu.offsetTop+dy)+'px';menu.style.right='auto';menu.style.left=(menu.offsetLeft+dx)+'px'});
-document.addEventListener('mouseup',function(){dragging=false});
 
-/* Layout toggle */
-var horizontal=false;
-document.getElementById('snMenuLayout').onclick=function(e){
-  e.stopPropagation();
-  horizontal=!horizontal;
-  var bw=document.getElementById('snMenuBtns');
-  if(horizontal){
-    menu.style.width='auto';menu.style.minWidth='auto';menu.style.maxWidth='none';
-    menu.style.left='10px';menu.style.right='10px';menu.style.top='10px';menu.style.borderRadius='12px';
-    bw.style.flexDirection='row';bw.style.flexWrap='nowrap';
-    bw.querySelectorAll('button').forEach(function(b){b.style.width='auto';b.style.padding='5px 10px'});
-    this.textContent='☰';this.title='Switch to list view';
-  }else{
-    menu.style.width='260px';menu.style.minWidth='240px';menu.style.maxWidth='';
-    menu.style.left='';menu.style.right='20px';menu.style.top='10px';
-    bw.style.flexDirection='column';bw.style.flexWrap='nowrap';
-    bw.querySelectorAll('button').forEach(function(b){b.style.width='100%';b.style.padding='10px 12px'});
-    this.textContent='⊞';this.title='Switch to grid view';
-  }
-};
+
+
+
 
 })();
