@@ -134,7 +134,7 @@ function staleCheck(btn){
 
 var menu=document.createElement('div');
 menu.id='snMenu';
-menu.style.cssText='position:fixed;top:60px;right:20px;z-index:99999;background:#1a1a2e;border:1px solid #a78bfa;border-radius:12px;padding:14px;min-width:240px;width:260px;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:auto';
+menu.style.cssText='position:fixed;top:10px;right:20px;z-index:99999;background:#1a1a2e;border:1px solid #a78bfa;border-radius:12px;padding:14px;min-width:240px;width:260px;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:auto';
 
 menu.innerHTML='<div id="snMenuHdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:move;user-select:none"><span style="font-size:.8rem;font-weight:700;color:#a78bfa;letter-spacing:.08em">SNOW HELPER</span><div style="display:flex;gap:4px"><button id="snMenuLayout" style="background:none;border:1px solid #2a2a3e;color:#64748b;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:4px" title="Toggle layout">☰</button><button id="snMenuClose" style="background:none;border:1px solid #2a2a3e;color:#64748b;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:4px">✕</button></div></div>';
 var btnWrap=document.createElement('div');
@@ -174,17 +174,9 @@ tools.forEach(function(t){
   b.onmouseover=function(){this.style.background=c.bg.replace('.12','.25');this.style.color=c.hover;this.style.transform='translateX(2px)'};
   b.onmouseout=function(){this.style.background=c.bg;this.style.color='#e2e8f0';this.style.transform='none'};
   if(t.label==='TaskMaster'){
-    b.onclick=function(){menu.remove();
-      var s=document.createElement('script');
-      s.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();
-      document.body.appendChild(s);
-    };
+    b.onclick=function(){var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
   }else if(t.label==='PC Review'){
-    b.onclick=function(){menu.remove();
-      var s=document.createElement('script');
-      s.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();
-      document.body.appendChild(s);
-    };
+    b.onclick=function(){var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
   }else{
     b.onclick=function(){t.fn(this)};
   }
@@ -208,12 +200,14 @@ document.getElementById('snMenuLayout').onclick=function(e){
   horizontal=!horizontal;
   var bw=document.getElementById('snMenuBtns');
   if(horizontal){
-    menu.style.width='auto';menu.style.minWidth='auto';menu.style.maxWidth='90vw';
-    bw.style.flexDirection='row';bw.style.flexWrap='wrap';
+    menu.style.width='auto';menu.style.minWidth='auto';menu.style.maxWidth='none';
+    menu.style.left='10px';menu.style.right='10px';menu.style.top='10px';menu.style.borderRadius='12px';
+    bw.style.flexDirection='row';bw.style.flexWrap='nowrap';
     bw.querySelectorAll('button').forEach(function(b){b.style.width='auto';b.style.padding='8px 14px'});
     this.textContent='☰';this.title='Switch to list view';
   }else{
     menu.style.width='260px';menu.style.minWidth='240px';menu.style.maxWidth='';
+    menu.style.left='';menu.style.right='20px';menu.style.top='10px';
     bw.style.flexDirection='column';bw.style.flexWrap='nowrap';
     bw.querySelectorAll('button').forEach(function(b){b.style.width='100%';b.style.padding='10px 12px'});
     this.textContent='⊞';this.title='Switch to grid view';
