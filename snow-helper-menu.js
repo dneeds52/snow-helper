@@ -16,7 +16,7 @@ function api(m,u,b){return fetch(u,{method:m,headers:{'Content-Type':'applicatio
 
 function confetti(){var c=['#a78bfa','#67e8f9','#f59e0b','#34d399','#f87171','#fb923c','#60a5fa'];for(var i=0;i<30;i++){var e=document.createElement('div');e.style.cssText='position:fixed;pointer-events:none;z-index:999999;width:'+(Math.random()*8+4)+'px;height:'+(Math.random()*8+4)+'px;background:'+c[Math.floor(Math.random()*c.length)]+';border-radius:'+(Math.random()>.5?'50%':'2px')+';left:'+(Math.random()*window.innerWidth)+'px;top:'+(Math.random()*window.innerHeight*.5+window.innerHeight*.25)+'px;opacity:1;transition:none';document.body.appendChild(e);var tx=(Math.random()-.5)*300,ty=(Math.random()-1)*300,r=Math.random()*720-360;setTimeout(function(el,x,y,ro){el.style.transition='transform 1s ease-out,opacity 1s ease-out';el.style.transform='translate('+x+'px,'+y+'px) rotate('+ro+'deg)';el.style.opacity='0';setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},1100)},10,e,tx,ty,r)}}
 
-function flash(btn,msg){}
+function flash(btn,msg){if(msg)alert(msg)}
 
 /* ===== TOOL FUNCTIONS ===== */
 
@@ -108,7 +108,7 @@ function fillTriage(btn){
 
 function staleCheck(btn){
   if(!tok){flash(btn,'No SN session');return}
-  flash(btn,'Checking...');
+  ;
   var d=new Date();d.setDate(d.getDate()-7);
   var y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');
   var hr=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0'),se=String(d.getSeconds()).padStart(2,'0');
@@ -179,9 +179,9 @@ tools.forEach(function(t){
   b.onmouseover=function(){this.style.background=c.bg.replace('.12','.25');this.style.color=c.hover;this.style.transform='translateX(2px)'};
   b.onmouseout=function(){this.style.background=c.bg;this.style.color='#e2e8f0';this.style.transform='none'};
   if(t.label==='TaskMaster'){
-    b.onclick=function(e){e.preventDefault();e.stopPropagation();var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
+    b.onclick=function(e){e.preventDefault();e.stopPropagation();var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();document.body.appendChild(sc);};
   }else if(t.label==='PC Review'){
-    b.onclick=function(e){e.preventDefault();e.stopPropagation();var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
+    b.onclick=function(e){e.preventDefault();e.stopPropagation();var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();document.body.appendChild(sc);};
   }else{
     b.onclick=function(e){e.preventDefault();e.stopPropagation();t.fn(this)};
   }
