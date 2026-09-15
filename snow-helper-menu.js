@@ -162,7 +162,11 @@ var tools=[
   {label:'TaskMaster',icon:'🏅',fn:null},
   {label:'Copy Info',icon:'🔗',fn:copyTicket},
   {label:'Email',icon:'✉️',fn:emailTicket},
+  {label:'Save Title',icon:'💾',fn:saveTicket},
+  {label:'Clean Ticket',icon:'🧹',fn:cleanTicket},
   {label:'Stale Check',icon:'⏰',fn:staleCheck},
+  {label:'PC Review',icon:'📋',fn:null},
+  {label:'_spacer',icon:'',fn:null},
   {label:'Grabber',icon:'📋',fn:grabTicket},
   {label:'Tagger',icon:'🏷️',fn:fillTriage}
 ];
@@ -181,6 +185,7 @@ tools.forEach(function(t){
   }else{
     b.onclick=function(e){e.preventDefault();e.stopPropagation();t.fn(this)};
   }
+  if(t.label==='_spacer'){var sp=document.createElement('div');sp.style.cssText='flex:1';btnWrap.appendChild(sp);return}
   btnWrap.appendChild(b);
 });
 
