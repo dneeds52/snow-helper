@@ -169,16 +169,16 @@ var tools=[
 tools.forEach(function(t){
   var c=colors[t.label]||{bg:'transparent',border:'#2a2a3e',hover:'#a78bfa'};
   var b=document.createElement('button');
-  b.style.cssText='display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;margin-bottom:5px;border:1px solid '+c.border+';border-radius:8px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:.92rem;font-weight:500;cursor:pointer;text-align:left;transition:all .15s';
+  b.style.cssText='display:flex;align-items:center;gap:10px;width:100%;padding:5px 10px;margin-bottom:3px;border:1px solid '+c.border+';border-radius:8px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:1rem;font-weight:500;cursor:pointer;text-align:left;transition:all .15s';
   b.innerHTML='<span style="font-size:1.1rem">'+t.icon+'</span> '+t.label;
   b.onmouseover=function(){this.style.background=c.bg.replace('.12','.25');this.style.color=c.hover;this.style.transform='translateX(2px)'};
   b.onmouseout=function(){this.style.background=c.bg;this.style.color='#e2e8f0';this.style.transform='none'};
   if(t.label==='TaskMaster'){
-    b.onclick=function(){var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
+    b.onclick=function(e){e.preventDefault();e.stopPropagation();var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
   }else if(t.label==='PC Review'){
-    b.onclick=function(){var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
+    b.onclick=function(e){e.preventDefault();e.stopPropagation();var sc=document.createElement('script');sc.src='https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js?t='+Date.now();document.body.appendChild(sc);flash(this,'Running...')};
   }else{
-    b.onclick=function(){t.fn(this)};
+    b.onclick=function(e){e.preventDefault();e.stopPropagation();t.fn(this)};
   }
   btnWrap.appendChild(b);
 });
@@ -203,7 +203,7 @@ document.getElementById('snMenuLayout').onclick=function(e){
     menu.style.width='auto';menu.style.minWidth='auto';menu.style.maxWidth='none';
     menu.style.left='10px';menu.style.right='10px';menu.style.top='10px';menu.style.borderRadius='12px';
     bw.style.flexDirection='row';bw.style.flexWrap='nowrap';
-    bw.querySelectorAll('button').forEach(function(b){b.style.width='auto';b.style.padding='8px 14px'});
+    bw.querySelectorAll('button').forEach(function(b){b.style.width='auto';b.style.padding='5px 10px'});
     this.textContent='☰';this.title='Switch to list view';
   }else{
     menu.style.width='260px';menu.style.minWidth='240px';menu.style.maxWidth='';
