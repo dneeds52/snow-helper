@@ -159,15 +159,12 @@ var colors={
 };
 
 var tools=[
-  {label:'Grab Ticket',icon:'📋',fn:grabTicket},
-  {label:'Save Title',icon:'💾',fn:saveTicket},
+  {label:'TaskMaster',icon:'🏅',fn:null},
   {label:'Copy Info',icon:'🔗',fn:copyTicket},
   {label:'Email',icon:'✉️',fn:emailTicket},
-  {label:'Clean Ticket',icon:'🧹',fn:cleanTicket},
-  {label:'Fill Triage',icon:'🏷️',fn:fillTriage},
   {label:'Stale Check',icon:'⏰',fn:staleCheck},
-  {label:'PC Review',icon:'📋',fn:null},
-  {label:'TaskMaster',icon:'🏅',fn:null}
+  {label:'Grabber',icon:'📋',fn:grabTicket},
+  {label:'Tagger',icon:'🏷️',fn:fillTriage}
 ];
 
 tools.forEach(function(t){
