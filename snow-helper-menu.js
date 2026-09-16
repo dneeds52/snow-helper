@@ -174,7 +174,7 @@ var tools=[
 tools.forEach(function(t){
   var c=colors[t.label]||{bg:'transparent',border:'#2a2a3e',hover:'#a78bfa'};
   var b=document.createElement('button');
-  b.style.cssText='display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid '+c.border+';border-radius:6px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s';
+  b.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid '+c.border+';border-radius:6px;background:'+c.bg+';color:#e2e8f0;font:inherit;font-size:.8rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s';
   b.innerHTML='<span style="font-size:1.1rem">'+t.icon+'</span> '+t.label;
   b.onmouseover=function(){this.style.background=c.bg.replace('.12','.25');this.style.color=c.hover;this.style.transform='translateX(2px)'};
   b.onmouseout=function(){this.style.background=c.bg;this.style.color='#e2e8f0';this.style.transform='none'};
