@@ -151,12 +151,14 @@ var tools=[
   {name:'Stale',      icon:'⏰',color:'#f87171',fn:staleCheck},
   {name:'PC Review',  icon:'📋',color:'#34d399',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js')}},
   {name:'_spacer'},
+  {name:'_link',icon:'⚙️',color:'#a78bfa',url:'https://dneeds52.github.io/snow-helper/snow-helper-triage-tagger.html?popout=1'},
   {name:'Grabber',    icon:'📋',color:'#38bdf8',fn:grabTicket},
   {name:'Tagger',     icon:'🏷️',color:'#38bdf8',fn:fillTriage}
 ];
 
 tools.forEach(function(t){
   if(t.name==='_spacer'){var sp=document.createElement('div');sp.style.flex='1';menu.appendChild(sp);return}
+  if(t.name==='_link'){var a=document.createElement('a');a.href=t.url;a.target='_blank';a.style.cssText='font-size:16px;text-decoration:none;padding:2px 4px;border:1px solid '+t.color+';border-radius:5px;background:rgba(0,0,0,.2);display:inline-flex;align-items:center';a.textContent=t.icon;a.title='Open Triage Tagger';a.onclick=function(e){e.stopPropagation();window.open(this.href,'triageTagger','width=430,height=960,resizable=yes,scrollbars=yes');e.preventDefault()};menu.appendChild(a);return}
   var b=document.createElement('button');
   b.style.cssText='font:13px system-ui,sans-serif;font-weight:500;padding:4px 10px;border:1px solid '+t.color+';border-radius:5px;background:rgba(0,0,0,.2);color:#e2e8f0;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px';
   b.textContent=t.icon+' '+t.name;
