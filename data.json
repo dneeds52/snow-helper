@@ -1,0 +1,560 @@
+{
+  "publishedAt": 1790187543005,
+  "activeId": "up-may26",
+  "analysts": [
+    "Darcy",
+    "David",
+    "Kelsy",
+    "Gui"
+  ],
+  "upgrades": [
+    {
+      "id": "up-feb26",
+      "version": "Feb'26",
+      "goLive": "2026-08-13",
+      "current": false,
+      "done": true,
+      "notes": "",
+      "milestones": [
+        {
+          "date": "2026-06-15",
+          "label": "PJX, REL, POC environments upgrade",
+          "link": ""
+        },
+        {
+          "date": "2026-06-19",
+          "label": "Nova Notes reviewed",
+          "link": ""
+        },
+        {
+          "date": "2026-07-10",
+          "label": "Build deadline",
+          "link": ""
+        },
+        {
+          "date": "2026-07-19",
+          "label": "TST environment upgrade",
+          "link": ""
+        },
+        {
+          "date": "2026-07-20",
+          "label": "POC → TST build migration",
+          "link": ""
+        },
+        {
+          "date": "2026-07-20",
+          "end": "2026-07-24",
+          "label": "Application testing / EUAT",
+          "link": "https://umassmemorial.sharepoint.com/sites/IS-Applications/_layouts/15/guestaccess.aspx?share=IgCScAHryyf2Ta8v25YpQ248AfgvgJD5b0P5qv-Yyinpbig&e=wj7PoK"
+        },
+        {
+          "date": "2026-07-27",
+          "end": "2026-07-31",
+          "label": "Integrated testing",
+          "link": "https://umassmemorial.sharepoint.com/sites/IS-Applications/_layouts/15/guestaccess.aspx?share=IgBgAeDwWzIxR5frVSjMCqmHAbr-Dj9qeIoqrtu3R5EhMEI&e=ZSMQZa"
+        },
+        {
+          "date": "2026-07-27",
+          "label": "BPAM testing",
+          "link": "https://umassmemorial.sharepoint.com/sites/IS-Applications/_layouts/15/guestaccess.aspx?share=IgBgAeDwWzIxR5frVSjMCqmHAbr-Dj9qeIoqrtu3R5EhMEI&e=ZSMQZa"
+        },
+        {
+          "date": "2026-08-11",
+          "label": "SUP environment upgrade",
+          "link": ""
+        },
+        {
+          "date": "2026-08-13",
+          "label": "PRD environment upgrade / GO LIVE",
+          "link": ""
+        }
+      ],
+      "nova": [
+        {
+          "id": "nn918727",
+          "number": "918727",
+          "title": "More Easily Identify Provider Teams on Shift",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=918727",
+          "owner": "Darcy",
+          "done": false
+        },
+        {
+          "id": "nn904090",
+          "number": "904090",
+          "title": "Place Common Verbal and Per Protocol Orders Directly from the Narrator",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=904090",
+          "owner": "Darcy",
+          "done": false
+        },
+        {
+          "id": "nn920956",
+          "number": "920956",
+          "title": "Enhanced Sorting and Other Options for Additional Columns in Mobile Patient Lists",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=920956",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "nn914736",
+          "number": "914736",
+          "title": "Consistent Authentication: OIDC Now Works in All Mobile Contexts",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=914736",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "nn915549",
+          "number": "915549",
+          "title": "Increase Efficiency Finding and Reviewing Clinical Images Using Combine Images and Grid Capture",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=915549",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "nn915955",
+          "number": "915955",
+          "title": "Improve Clinical Image Quality in Haiku, Canto, and Rover",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=915955",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "nn915967",
+          "number": "915967",
+          "title": "Patient Instructions SmartText Versioning and Retirement Updates",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=915967",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "nn921146",
+          "number": "921146",
+          "title": "Update Your Mobile Apps to Version 11.7 for February 2026",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=921146",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "nn911679",
+          "number": "911679",
+          "title": "Get Up to Speed in the ED with AI-Generated Note Summaries",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=911679",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "nn916583",
+          "number": "916583",
+          "title": "Demographics Activity Now Respects Security",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=916583",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "nn897181",
+          "number": "897181",
+          "title": "Patch Perfect: Remind Nurses to Verify Patch Medications Are Still Present",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=897181",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "nn912354",
+          "number": "912354",
+          "title": "Simpler ED Disposition Column Sorting in ED Tracking Tools",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=912354",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "nn913131",
+          "number": "913131",
+          "title": "Ready, Set, Right-Click: Marking Beds Ready in ED Manager",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=913131",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "nn913766",
+          "number": "913766",
+          "title": "New Security Points Required to Access Patient Tracking Activities",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=913766",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "nn918956",
+          "number": "918956",
+          "title": "Better Level of Service Range Calculation Validation for the Scoring System Editor",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=918956",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "nn918949",
+          "number": "918949",
+          "title": "Early Detection of Sepsis (Version 1) Predictive Model Retired in the United States",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=918949",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "nn898370",
+          "number": "898370",
+          "title": "Track Psychiatric Treatment History in One Place",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=898370",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "nn900377",
+          "number": "900377",
+          "title": "It's Time to Give Patients Estimated Wait Times",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=900377",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "nn905122",
+          "number": "905122",
+          "title": "You Belong with Me (Epic's Version): Track Patient Belongings in New Activity",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=905122",
+          "owner": "Gui",
+          "done": false
+        }
+      ],
+      "testing": [],
+      "migrations": [],
+      "testLinks": [
+        {
+          "label": "ASAP Testing Toolkit 8.13.26",
+          "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/_layouts/15/guestaccess.aspx?share=IQA40fF3D63zTKX27ccRgwahAfL06ZHFEaWKt0Pz8BmjyJ4&e=nMC9db"
+        }
+      ],
+      "cmInstructions": [
+        {
+          "label": "Priority",
+          "value": "Upgrade Phase 2 (Medium)"
+        },
+        {
+          "label": "Reason",
+          "value": "Upgrade"
+        },
+        {
+          "label": "Due in Production",
+          "value": "8/13/2026"
+        }
+      ],
+      "versionSkewTicket": ""
+    },
+    {
+      "id": "up-may26",
+      "version": "May'26",
+      "goLive": "2026-11-12",
+      "current": true,
+      "done": false,
+      "notes": "",
+      "milestones": [
+        {
+          "date": "2026-09-14",
+          "label": "PJX, REL, POC environments upgrade",
+          "link": ""
+        },
+        {
+          "date": "2026-09-18",
+          "label": "Nova Notes reviewed",
+          "link": ""
+        },
+        {
+          "date": "2026-10-16",
+          "label": "Build deadline",
+          "link": ""
+        },
+        {
+          "date": "2026-10-18",
+          "label": "TST environment upgrade",
+          "link": ""
+        },
+        {
+          "date": "2026-10-19",
+          "label": "POC → TST build migration",
+          "link": ""
+        },
+        {
+          "date": "2026-10-19",
+          "end": "2026-10-23",
+          "label": "Application testing / EUAT",
+          "link": "https://umassmemorial.sharepoint.com/sites/IS-Applications/Program%20Support%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIS%2DApplications%2FProgram%20Support%20Documents%2FN%2D1%2FFY%2026%20Upgrade%2FMay%2025%20Upgrade%20PRD%2011%2E13%2E25%2FTesting%2FApplication%20Testing&p=true"
+        },
+        {
+          "date": "2026-10-26",
+          "end": "2026-10-30",
+          "label": "Integrated testing",
+          "link": "https://umassmemorial.sharepoint.com/sites/IS-Applications/Program%20Support%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIS%2DApplications%2FProgram%20Support%20Documents%2FN%2D1%2FFY%2026%20Upgrade%2FMay%2025%20Upgrade%20PRD%2011%2E13%2E25%2FTesting%2FIntegrated%20Testing&p=true"
+        },
+        {
+          "date": "2026-10-26",
+          "label": "BPAM testing",
+          "link": "https://umassmemorial.sharepoint.com/sites/IS-Applications/Program%20Support%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIS%2DApplications%2FProgram%20Support%20Documents%2FN%2D1%2FFY%2026%20Upgrade%2FMay%2025%20Upgrade%20PRD%2011%2E13%2E25%2FTesting%2FBPAM%20Testing&p=true"
+        },
+        {
+          "date": "2026-11-10",
+          "label": "SUP environment upgrade",
+          "link": ""
+        },
+        {
+          "date": "2026-11-12",
+          "label": "PRD environment upgrade / GO LIVE",
+          "link": ""
+        }
+      ],
+      "nova": [
+        {
+          "id": "idmueff7edf0hi",
+          "number": "919396",
+          "title": "Document Multiple Reasons for Not Sharing a Note with a Patient",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=919396",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "idmueff7edhg7b",
+          "number": "919564",
+          "title": "Speed Up Flowsheet Documentation in Triage, Workup, and Dispo",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=919564",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "idmueff7edvi1c",
+          "number": "920820",
+          "title": "Common ED Order Sets Automatically Added to the Quick List",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=920820",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "idmueff7edfpqz",
+          "number": "924375",
+          "title": "Send Patient and Discharge Instructions to External Translation Vendors",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=924375",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "idmueff7eduhow",
+          "number": "925677",
+          "title": "Paperless AVS and AVS for All Always On",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=925677",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "idmueff7edsrdj",
+          "number": "926730",
+          "title": "Provide the AVS and Hello World SMS Content in Korean and Traditional Chinese",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=926730",
+          "owner": "Kelsy",
+          "done": false
+        },
+        {
+          "id": "idmueff7ed9t3m",
+          "number": "910854",
+          "title": "Users Can Document Specific Patient SDOH Help Requests in Flowsheets",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=910854",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7ed2cmh",
+          "number": "925761",
+          "title": "A New View: Pop Out Your ED Tracking Tools",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=925761",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7eduafo",
+          "number": "921094",
+          "title": "Orders Activity Shows Insulin Instructions Banner in Haiku, Canto, and Rover",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=921094",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7edty87",
+          "number": "922159",
+          "title": "Annotate Diagrams in Rover on iOS Devices",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=922159",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7ednel7",
+          "number": "920820",
+          "title": "Common ED Order Sets Automatically Added to the Quick List",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=920820",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7edzopd",
+          "number": "922356",
+          "title": "Give ED Physicians Easy Access to Orders for Treating Infants with Fevers",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=922356",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7ed0xcz",
+          "number": "922063",
+          "title": "Patient Pronouns on Mobile Devices Support Inclusive Care",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=922063",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7edlpcm",
+          "number": "922279",
+          "title": "Edit Mobile Sticky Notes in Haiku, Canto, and Rover on iOS Devices",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=922279",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7edghoz",
+          "number": "923487",
+          "title": "Barcode Scanning Now Available on iPads",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=923487",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7edmjbm",
+          "number": "925171",
+          "title": "Update Your Mobile Apps to Version 11.8 for May 2026",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=925171",
+          "owner": "David",
+          "done": false
+        },
+        {
+          "id": "idmueff7edki35",
+          "number": "915976",
+          "title": "Quick Orders Are Automatically Available to Place in Specialty Narrators",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=915976",
+          "owner": "Darcy",
+          "done": false
+        },
+        {
+          "id": "idmueff7edjrx5",
+          "number": "914799",
+          "title": "Improvements to Manual Sorting in Track Board Views",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=914799",
+          "owner": "Darcy",
+          "done": false
+        },
+        {
+          "id": "idmueff7edh0xo",
+          "number": "922807",
+          "title": "Track Medication Administration Barcode Scanning Compliance in the MAR with Print Groups",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=922807",
+          "owner": "Darcy",
+          "done": false
+        },
+        {
+          "id": "idmueff7ed5c3h",
+          "number": "920520",
+          "title": "New Ways to Organize Medications in the MAR",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=920520",
+          "owner": "Darcy",
+          "done": false
+        },
+        {
+          "id": "idmueff7ed5e1u",
+          "number": "920274",
+          "title": "Save Coders Time with KVO Medication Administrations Automatically Excluded from Infusion Charging",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=920274",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "idmueff7edefhg",
+          "number": "923443",
+          "title": "Accurately Charge for Foreign Body Removal - Embedded Procedures",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=923443",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "idmueff7edjkyo",
+          "number": "924025",
+          "title": "Accurately Charge for Partial and Full Thickness Burn Treatments",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=924025",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "idmueff7ed5woh",
+          "number": "898370",
+          "title": "Track Psychiatric Treatment History in One Place",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=898370",
+          "owner": "Gui",
+          "done": false
+        },
+        {
+          "id": "idmueff7eds7kd",
+          "number": "905122",
+          "title": "You Belong with Me (Epic's Version): Track Patient Belongings in New Activity",
+          "link": "https://nova.epic.com/Select?CstID=978&RnID=905122",
+          "owner": "Gui",
+          "done": false
+        }
+      ],
+      "testing": [],
+      "migrations": [],
+      "testLinks": [
+        {
+          "label": "Application Testing",
+          "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/Program%20Support%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIS%2DApplications%2FProgram%20Support%20Documents%2FN%2D1%2FFY%2026%20Upgrade%2FMay%2025%20Upgrade%20PRD%2011%2E13%2E25%2FTesting%2FApplication%20Testing&p=true"
+        },
+        {
+          "label": "Integrated testing",
+          "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/Program%20Support%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIS%2DApplications%2FProgram%20Support%20Documents%2FN%2D1%2FFY%2026%20Upgrade%2FMay%2025%20Upgrade%20PRD%2011%2E13%2E25%2FTesting%2FIntegrated%20Testing&p=true"
+        },
+        {
+          "label": "BPAM testing",
+          "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/Program%20Support%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIS%2DApplications%2FProgram%20Support%20Documents%2FN%2D1%2FFY%2026%20Upgrade%2FMay%2025%20Upgrade%20PRD%2011%2E13%2E25%2FTesting%2FBPAM%20Testing&p=true"
+        }
+      ],
+      "cmInstructions": [
+        {
+          "label": "Priority",
+          "value": "Upgrade Phase 2 (Medium)"
+        },
+        {
+          "label": "Reason",
+          "value": "Upgrade"
+        },
+        {
+          "label": "Due in Production",
+          "value": "11/12/2026"
+        }
+      ],
+      "versionSkewTicket": ""
+    }
+  ],
+  "testingResources": [
+    {
+      "label": "Testing library (all IS)",
+      "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/_layouts/15/guestaccess.aspx?share=IgBgAeDwWzIxR5frVSjMCqmHAbr-Dj9qeIoqrtu3R5EhMEI&e=ZSMQZa"
+    },
+    {
+      "label": "Application Testing",
+      "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/_layouts/15/guestaccess.aspx?share=IgCScAHryyf2Ta8v25YpQ248AfgvgJD5b0P5qv-Yyinpbig&e=wj7PoK"
+    },
+    {
+      "label": "ASAP Smoke Testing",
+      "url": "https://umassmemorial.sharepoint.com/sites/IS-Applications/SU%20Smoke%20Testing%20Scripts/Forms/AllItems.aspx"
+    }
+  ]
+}
