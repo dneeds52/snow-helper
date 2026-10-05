@@ -69,7 +69,7 @@ function emailTicket(btn){
   var num=gf.getValue('number')||'',sd=gf.getValue('short_description')||'',desc=gf.getValue('description')||'';
   var sysId=gf.getUniqueValue()||'',tbl=gf.getTableName()||'sc_task';
   var link=location.origin+'/nav_to.do?uri='+tbl+'.do?sys_id='+sysId;
-  var reqName='';try{reqName=gf.getDisplayValue('requested_for')||gf.getDisplayValue('caller_id')||''}catch(e){}
+  var reqName='';try{reqName=gf.getDisplayValue('requested_for')||gf.getDisplayValue('caller_id')||gf.getDisplayValue('requested_by')||''}catch(e){}
   var fn=(reqName.split(' ')[0])||'there';
   var reqNum='';try{reqNum=gf.getDisplayValue('request')||''}catch(e){}
   var nl='\r\n',subj=reqNum?(reqNum+' / '+num+' '+sd):(num+' '+sd);
