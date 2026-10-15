@@ -7,9 +7,10 @@ if(document.getElementById('snMenu'))return;
 /* --- Session --- */
 var tok=window.g_ck||'';
 var gf=window.g_form||null;
-if(!gf){try{for(var i=0;i<frames.length;i++){if(frames[i].g_form){gf=frames[i].g_form;tok=frames[i].g_ck||tok;break}}}catch(e){}}
+if(!gf){try{for(var i=0;i<frames.length;i++){try{if(frames[i].g_form){gf=frames[i].g_form;if(!tok&&frames[i].g_ck)tok=frames[i].g_ck;break}}catch(e2){}}}catch(e){}}
+if(!tok){try{for(var ti=0;ti<frames.length;ti++){try{if(frames[ti].g_ck){tok=frames[ti].g_ck;break}}catch(e3){}}}catch(e){}}
 var Q='b0f881a7db916e00cdb372fc0f961973';
-var OWNERS='5bcef6801bfb4950d96b531b234bcbb3,542e894edbddaa00cdb372fc0f961903,042e494edbddaa00cdb372fc0f9619cc,2e0e454edbddaa00cdb372fc0f9619c3';
+var OWNERS='5bcef6801bfb4950d96b531b234bcbb3,542e894edbddaa00cdb372fc0f961903,042e494edbddaa00cdb372fc0f9619cc,2e0e454edbddaa00cdb372fc0f9619c3,79a3054e47e95e9042f9ccdf016d431e';
 
 /* --- Helpers --- */
 function api(m,u,b){return fetch(u,{method:m,headers:{'Content-Type':'application/json',Accept:'application/json','X-UserToken':tok},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json()})}
@@ -100,7 +101,7 @@ function fillTriage(btn){
     Promise.all(d.tags.map(function(name){
       return api('GET','/api/now/table/label?sysparm_limit=5&sysparm_fields=sys_id,name&sysparm_query=name='+encodeURIComponent(name)+'%5EownerIN'+OWNERS).then(function(r){
         var l=r.result&&r.result[0];
-        if(!l)return api('GET','/api/now/table/label?sysparm_limit=5&sysparm_fields=sys_id,name&sysparm_query=nameLIKE'+encodeURIComponent(name)).then(function(r2){var l2=r2.result&&r2.result[0];if(!l2)throw 0;return api('POST','/api/now/table/label_entry',{label:l2.sys_id,table:tbl,table_key:key})});
+        if(!l)return api('GET','/api/now/table/label?sysparm_limit=5&sysparm_fields=sys_id,name&sysparm_query=nameLIKE'+encodeURIComponent(name)+'%5EownerIN'+OWNERS).then(function(r2){var l2=r2.result&&r2.result[0];if(!l2)throw 0;return api('POST','/api/now/table/label_entry',{label:l2.sys_id,table:tbl,table_key:key})});
         return api('POST','/api/now/table/label_entry',{label:l.sys_id,table:tbl,table_key:key})
       }).then(function(){return name+': applied'}).catch(function(){return name+': FAILED'})
     })).then(function(res){out=out.concat(res);alert(out.join('\n'))});
