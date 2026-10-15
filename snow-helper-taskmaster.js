@@ -94,9 +94,7 @@
     sdCell.innerHTML = s.lbl + sdCell.innerHTML;
     sdCell.title = sdCell.innerText;
 
-    /* also color the order cell */
-    oCell.style.backgroundColor = s.bg;
-    oCell.style.color = s.c;
+    /* order cell left unstyled — color on SD only */
 
     if (sdCell.innerText.length > 90) {
       sdCell.innerText = sdCell.innerText.substring(0, 87) + "...";
