@@ -372,7 +372,7 @@
   /* ---------- state ---------- */
   var state = {
     selectedTags: [],
-    site: "",
+    site: [],
     action: "",
     touched: { tags: false, site: false }
   };
@@ -476,11 +476,19 @@
       b.className = "tt-btn";
       b.textContent = v;
       b.addEventListener("click", function () {
-        if (key === "site") state.touched.site = true;
-        state[key] = (state[key] === v) ? "" : v;
-        if (key === "site" && state.site && !$("ttDetail").dataset.touched) {
-          $("ttDetail").value = stripSite($("ttDetail").value, state.site);
-          updateCounter();
+        if (key === "site") {
+          state.touched.site = true;
+          var idx = state.site.indexOf(v);
+          if (idx >= 0) state.site.splice(idx, 1);
+          else state.site.push(v);
+          if (!$("ttDetail").dataset.touched) {
+            var det = $("ttDetail").value;
+            state.site.forEach(function(si) { det = stripSite(det, si); });
+            $("ttDetail").value = det;
+            updateCounter();
+          }
+        } else {
+          state[key] = (state[key] === v) ? "" : v;
         }
         renderBar(containerId, key);
         renderPreview();
@@ -491,10 +499,12 @@
   function renderBar(containerId, key) {
     var kids = $(containerId).children;
     for (var i = 0; i < kids.length; i++) {
-      var on = kids[i].textContent === state[key];
+      var val = kids[i].textContent.replace(" ✓","");
+      var on = (key === "site") ? state.site.indexOf(val) >= 0 : val === state[key];
       kids[i].style.background = on ? "#1F4E79" : "#f4f7fa";
       kids[i].style.color = on ? "#ffffff" : "#1c2733";
       kids[i].style.borderColor = on ? "#1F4E79" : "#b8c4cf";
+      kids[i].textContent = on && key === "site" ? val + " ✓" : val;
     }
   }
   buildBar("ttSites", SITES, "site");
@@ -522,7 +532,7 @@
       for (var j = 0; j < SITE_RULES.length; j++) {
         var s = text.match(SITE_RULES[j][1]);
         if (s) {
-          state.site = SITE_RULES[j][0];
+          state.site = [SITE_RULES[j][0]];
           hints.push("site \u2192 " + SITE_RULES[j][0]);
           sited = true;
           break;
@@ -617,6 +627,7 @@
     for (var j = 0; j < SITE_RULES.length; j++) {
       if (SITE_RULES[j][1].test((body + " " + activity).toLowerCase())) { whoBits.push("Site: " + SITE_RULES[j][0] + "."); siteHit = true; break; }
     }
+    if (!siteHit && state.site.length) { whoBits.push("Site: " + state.site.join(", ") + "."); }
     if (!siteHit) {
       for (var k = 0; k < AMBIGUOUS_SITES.length; k++) {
         if (AMBIGUOUS_SITES[k][0].test(body.toLowerCase())) { whoBits.push("Site: " + AMBIGUOUS_SITES[k][2] + " (" + AMBIGUOUS_SITES[k][1].join("/") + " \u2014 confirm which)."); break; }
@@ -647,7 +658,7 @@
   function shortDesc() {
     var parts = [];
     if (state.selectedTags[0]) parts.push(state.selectedTags[0]);
-    if (state.site) parts.push(state.site);
+    if (state.site.length) parts.push(state.site.join(", "));
     var head = parts.join(" | ");
     var act = state.action ? state.action + ": " : "";
     var det = titleCase($("ttDetail").value.trim());
@@ -711,7 +722,7 @@
 
   /* ---------- reset (top + bottom, scrolls to top) ---------- */
   function doReset() {
-    state.selectedTags = []; state.site = ""; state.action = "";
+    state.selectedTags = []; state.site = []; state.action = "";
     state.touched = { tags: false, site: false };
     ["ttPaste","ttDetail","ttCur","ttExp","ttWho","ttRec"].forEach(function (id) { $(id).value = ""; });
     delete $("ttDetail").dataset.touched;
@@ -738,7 +749,7 @@
   var BM_SAVE = 'javascript:(function(){%0Avar%20w=window;if(!w.g_form){try{for(var%20fi=0;fi<w.frames.length;fi++){if(w.frames[fi].g_form){w=w.frames[fi];break}}}catch(e){}}%0Avar%20gf=w.g_form;if(!gf){alert(%27Open%20a%20ticket%20first.%27);return}%0Afunction%20gv(f){try{return%20gf.getValue(f)||%27%27}catch(e){return%27%27}}%0Avar%20num=gv(%27number%27),sd=gv(%27short_description%27);%0Avar%20fname=(num+(sd?%27%20%27+sd:%27%27)).replace(/[%5C%5C/:*?%22<>|.]/g,%27%27).replace(/%5Cs+/g,%27%20%27).trim()||%27ticket%27;%0Aif(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(fname)}else{prompt(%27Copy:%27,fname)}%0A})()';
   if(document.getElementById("ttBmCodeSave")) $("ttBmCodeSave").textContent = BM_SAVE;
 
-  var BM = 'javascript:(function(){%0Avar%20p=prompt(%27Paste%20Triage%20Tagger%20payload:%27);if(!p)return;%0Avar%20d;try{d=JSON.parse(p)}catch(e){alert(%27Bad%20JSON%27);return}%0Avar%20out=[];%0Avar%20w=window;if(!w.g_form){try{for(var%20fi=0;fi<w.frames.length;fi++){if(w.frames[fi].g_form){w=w.frames[fi];break}}}catch(e){}}%0Avar%20gf=w.g_form||null;%0Afunction%20fill(f,v){if(!v)return!1;if(gf){try{gf.setValue(f,v);return!0}catch(e){}}%0Avar%20sels=%27[id%24=%22.%27+f+%27%22],%20[id=%22%27+f+%27%22]%27;%0Avar%20el=w.document.querySelector(sels);if(el){el.value=v;el.dispatchEvent(new%20Event(%27change%27,{bubbles:true}));return!0}return!1}%0Aout.push(%27Short%20desc:%20%27+(fill(%27short_description%27,d.short_description)?%27OK%27:%27FAIL%27));%0Aout.push(%27Description:%20%27+(fill(%27description%27,d.description)?%27OK%27:%27FAIL%27));%0A(d.extras||[]).forEach(function(x){out.push(x.field.slice(0,20)+%27:%20%27+(fill(x.field,x.value)?%27set%27:%27NOT%20set%27))});%0Aif(d.set_ranking_from_order&&gf){try{var%20ord=gf.getValue(%27order%27)||%27%27;var%20ones=ord.replace(/%5CD/g,%27%27).slice(-1);if(ones){gf.setValue(%27u_ranking%27,ones);out.push(%27Ranking:%20%27+ones)}}catch(e){out.push(%27Ranking:%20error%27)}}%0Avar%20tok=w.g_ck||%27%27;%0Afunction%20api(m,u,b){return%20fetch(u,{method:m,headers:{%27Content-Type%27:%27application/json%27,%27Accept%27:%27application/json%27,%27X-UserToken%27:tok},body:b?JSON.stringify(b):undefined}).then(function(r){return%20r.json()})}%0Avar%20chain=Promise.resolve();%0Aif(d.ci){chain=chain.then(function(){return%20api(%27GET%27,%27/api/now/table/cmdb_ci?sysparm_limit=1&sysparm_fields=sys_id,name&sysparm_query=name=%27+encodeURIComponent(d.ci))}).then(function(r){var%20rec=r.result&&r.result[0];if(rec&&gf){gf.setValue(%27cmdb_ci%27,rec.sys_id,rec.name);out.push(%27CI:%20%27+rec.name)}else{out.push(%27CI:%20not%20found%27)}}).catch(function(){out.push(%27CI:%20error%27)})}%0Aif(d.tags&&d.tags.length){if(gf&&tok&&gf.getUniqueValue()){var%20tbl=gf.getTableName(),key=gf.getUniqueValue();chain=chain.then(function(){return%20Promise.all(d.tags.map(function(name){return%20api(%27GET%27,%27/api/now/table/label?sysparm_limit=5&sysparm_fields=sys_id,name&sysparm_query=name=%27+encodeURIComponent(name)+%27%255EownerIN5bcef6801bfb4950d96b531b234bcbb3,542e894edbddaa00cdb372fc0f961903,042e494edbddaa00cdb372fc0f9619cc,2e0e454edbddaa00cdb372fc0f9619c3%27).then(function(r){var%20l=r.result&&r.result[0];if(!l){return%20api(%27GET%27,%27/api/now/table/label?sysparm_limit=5&sysparm_fields=sys_id,name&sysparm_query=nameLIKE%27+encodeURIComponent(name)).then(function(r2){var%20l2=r2.result&&r2.result[0];if(!l2)throw%200;return%20api(%27POST%27,%27/api/now/table/label_entry%27,{label:l2.sys_id,table:tbl,table_key:key})})}return%20api(%27POST%27,%27/api/now/table/label_entry%27,{label:l.sys_id,table:tbl,table_key:key})}).then(function(){return%20name+%27:%20applied%27}).catch(function(){return%20name+%27:%20FAILED%27})}))}).then(function(res){out=out.concat(res)})}else{out.push(%27Tags%20(manual):%20%27+d.tags.join(%27,%20%27))}}%0Achain.then(function(){alert(out.join(%27%5Cn%27))})%0A})()';
+  var BM = 'javascript:%28function%28%29%7B%0Avar%20p%3Dprompt%28%27Paste%20Triage%20Tagger%20payload%3A%27%29%3Bif%28%21p%29return%3B%0Avar%20d%3Btry%7Bd%3DJSON.parse%28p%29%7Dcatch%28e%29%7Balert%28%27Bad%20JSON%27%29%3Breturn%7D%0Avar%20out%3D%5B%5D%3B%0Avar%20w%3Dwindow%3Bif%28%21w.g_form%29%7Btry%7Bfor%28var%20fi%3D0%3Bfi%3Cw.frames.length%3Bfi%2B%2B%29%7Bif%28w.frames%5Bfi%5D.g_form%29%7Bw%3Dw.frames%5Bfi%5D%3Bbreak%7D%7D%7Dcatch%28e%29%7B%7D%7D%0Avar%20gf%3Dw.g_form%7C%7Cnull%3B%0Afunction%20fill%28f%2Cv%29%7Bif%28%21v%29return%211%3Bif%28gf%29%7Btry%7Bgf.setValue%28f%2Cv%29%3Breturn%210%7Dcatch%28e%29%7B%7D%7D%0Avar%20sels%3D%22%5Bid%24%3D%5C%22.%22%2Bf%2B%22%5C%22%5D%2C%20%5Bid%3D%5C%22%22%2Bf%2B%22%5C%22%5D%22%3B%0Avar%20el%3Dw.document.querySelector%28sels%29%3Bif%28el%29%7Bel.value%3Dv%3Bel.dispatchEvent%28new%20Event%28%27change%27%2C%7Bbubbles%3Atrue%7D%29%29%3Breturn%210%7Dreturn%211%7D%0Aout.push%28%27Short%20desc%3A%20%27%2B%28fill%28%27short_description%27%2Cd.short_description%29%3F%27OK%27%3A%27FAIL%27%29%29%3B%0Aout.push%28%27Description%3A%20%27%2B%28fill%28%27description%27%2Cd.description%29%3F%27OK%27%3A%27FAIL%27%29%29%3B%0A%28d.extras%7C%7C%5B%5D%29.forEach%28function%28x%29%7Bout.push%28x.field.slice%280%2C20%29%2B%27%3A%20%27%2B%28fill%28x.field%2Cx.value%29%3F%27set%27%3A%27NOT%20set%27%29%29%7D%29%3B%0Aif%28d.set_ranking_from_order%26%26gf%29%7Btry%7Bvar%20ord%3Dgf.getValue%28%27order%27%29%7C%7C%27%27%3Bvar%20ones%3Dord.replace%28%2F%5CD%2Fg%2C%27%27%29.slice%28-1%29%3Bif%28ones%29%7Bgf.setValue%28%27u_ranking%27%2Cones%29%3Bout.push%28%27Ranking%3A%20%27%2Bones%29%7D%7Dcatch%28e%29%7Bout.push%28%27Ranking%3A%20error%27%29%7D%7D%0Avar%20tok%3Dwindow.g_ck%7C%7C%27%27%3Bif%28%21tok%29%7Btry%7Bfor%28var%20ti%3D0%3Bti%3Cwindow.frames.length%3Bti%2B%2B%29%7Bif%28window.frames%5Bti%5D.g_ck%29%7Btok%3Dwindow.frames%5Bti%5D.g_ck%3Bbreak%7D%7D%7Dcatch%28e%29%7B%7D%7Dif%28%21tok%26%26w.g_ck%29%7Btok%3Dw.g_ck%7D%0Afunction%20api%28m%2Cu%2Cb%29%7Breturn%20fetch%28u%2C%7Bmethod%3Am%2Cheaders%3A%7B%27Content-Type%27%3A%27application%2Fjson%27%2C%27Accept%27%3A%27application%2Fjson%27%2C%27X-UserToken%27%3Atok%7D%2Cbody%3Ab%3FJSON.stringify%28b%29%3Aundefined%7D%29.then%28function%28r%29%7Bif%28%21r.ok%29throw%20new%20Error%28r.status%29%3Breturn%20r.json%28%29%7D%29%7D%0Avar%20ownF%3D%27%255EownerIN5bcef6801bfb4950d96b531b234bcbb3%2C542e894edbddaa00cdb372fc0f961903%2C042e494edbddaa00cdb372fc0f9619cc%2C2e0e454edbddaa00cdb372fc0f9619c3%2C79a3054e47e95e9042f9ccdf016d431e%27%3B%0Avar%20chain%3DPromise.resolve%28%29%3B%0Aif%28d.ci%29%7Bchain%3Dchain.then%28function%28%29%7Breturn%20api%28%27GET%27%2C%27%2Fapi%2Fnow%2Ftable%2Fcmdb_ci%3Fsysparm_limit%3D1%26sysparm_fields%3Dsys_id%2Cname%26sysparm_query%3Dname%3D%27%2BencodeURIComponent%28d.ci%29%29%7D%29.then%28function%28r%29%7Bvar%20rec%3Dr.result%26%26r.result%5B0%5D%3Bif%28rec%26%26gf%29%7Bgf.setValue%28%27cmdb_ci%27%2Crec.sys_id%2Crec.name%29%3Bout.push%28%27CI%3A%20%27%2Brec.name%29%7Delse%7Bout.push%28%27CI%3A%20not%20found%27%29%7D%7D%29.catch%28function%28e%29%7Bout.push%28%27CI%3A%20error%20%27%2Be%29%7D%29%7D%0Aif%28d.tags%26%26d.tags.length%29%7Bif%28gf%26%26tok%26%26gf.getUniqueValue%28%29%29%7Bvar%20tbl%3Dgf.getTableName%28%29%2Ckey%3Dgf.getUniqueValue%28%29%3Bchain%3Dchain.then%28function%28%29%7Breturn%20Promise.all%28d.tags.map%28function%28name%29%7Breturn%20api%28%27GET%27%2C%27%2Fapi%2Fnow%2Ftable%2Flabel%3Fsysparm_limit%3D5%26sysparm_fields%3Dsys_id%2Cname%26sysparm_query%3Dname%3D%27%2BencodeURIComponent%28name%29%2BownF%29.then%28function%28r%29%7Bvar%20l%3Dr.result%26%26r.result%5B0%5D%3Bif%28%21l%29%7Breturn%20api%28%27GET%27%2C%27%2Fapi%2Fnow%2Ftable%2Flabel%3Fsysparm_limit%3D5%26sysparm_fields%3Dsys_id%2Cname%26sysparm_query%3DnameLIKE%27%2BencodeURIComponent%28name%29%2BownF%29.then%28function%28r2%29%7Bvar%20l2%3Dr2.result%26%26r2.result%5B0%5D%3Bif%28%21l2%29throw%20new%20Error%28%27not%20found%27%29%3Breturn%20api%28%27POST%27%2C%27%2Fapi%2Fnow%2Ftable%2Flabel_entry%27%2C%7Blabel%3Al2.sys_id%2Ctable%3Atbl%2Ctable_key%3Akey%7D%29%7D%29%7Dreturn%20api%28%27POST%27%2C%27%2Fapi%2Fnow%2Ftable%2Flabel_entry%27%2C%7Blabel%3Al.sys_id%2Ctable%3Atbl%2Ctable_key%3Akey%7D%29%7D%29.then%28function%28%29%7Breturn%20name%2B%27%3A%20applied%27%7D%29.catch%28function%28e%29%7Breturn%20name%2B%27%3A%20FAILED%20%28%27%2Be%2B%27%29%27%7D%29%7D%29%29%7D%29.then%28function%28res%29%7Bout%3Dout.concat%28res%29%7D%29%7Delse%7Bout.push%28%27Tags%3A%20no%20token%20%28g_ck%3D%27%2B%21%21tok%2B%27%2C%20gf%3D%27%2B%21%21gf%2B%27%2C%20key%3D%27%2B%21%21%28gf%26%26gf.getUniqueValue%28%29%29%2B%27%29%27%29%7D%7D%0Achain.then%28function%28%29%7Balert%28out.join%28%27%5Cn%27%29%29%7D%29.catch%28function%28e%29%7Balert%28%27Error%3A%20%27%2Be%2B%27%5Cn%27%2Bout.join%28%27%5Cn%27%29%29%7D%29%0A%7D%29%28%29';
   $("ttBmCode").textContent = BM;
 
   /* ---------- init ---------- */
