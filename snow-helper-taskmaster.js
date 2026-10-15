@@ -1,67 +1,4 @@
 (function(){
-  /* --- locate header row to find columns by name --- */
-  var ths = Array.from(document.querySelectorAll("table.list_table th, table.data_list_table th"));
-  if (!ths.length) ths = Array.from(document.querySelectorAll("table th"));
-  var sdIdx = -1, oIdx = -1;
-
-  ths.forEach(function(th, i) {
-    var txt = (th.getAttribute("glide_label") || th.getAttribute("name") || th.innerText || "").toLowerCase().trim();
-    if (txt === "short_description" || txt === "short description") sdIdx = i;
-    if (txt === "order" || txt === "u_order") oIdx = i;
-  });
-
-  /* fallback: scan data rows if headers didn't work */
-  var dataRows = Array.from(document.querySelectorAll("table tbody tr")).filter(function(row) {
-    return (row.className || "").indexOf("list_row") > -1;
-  });
-  if (!dataRows.length) { alert("No data rows found."); return; }
-
-  if (sdIdx < 0 || oIdx < 0) {
-    /* old positional fallback */
-    var numIdx = -1;
-    for (var ri = 0; ri < dataRows.length; ri++) {
-      var tds = Array.from(dataRows[ri].querySelectorAll("td"));
-      tds.forEach(function(td, i) {
-        if (/^(INC|SCTASK|CHG|PRB|RITM)\d+/i.test((td.innerText || "").trim())) numIdx = i;
-      });
-      if (numIdx >= 0) break;
-    }
-    if (numIdx < 0) { alert("Could not find ticket number column."); return; }
-
-    if (sdIdx < 0) {
-      /* find the first text-heavy column after the number */
-      for (var ri2 = 0; ri2 < Math.min(dataRows.length, 5); ri2++) {
-        var tds2 = Array.from(dataRows[ri2].querySelectorAll("td"));
-        for (var ci = numIdx + 1; ci < tds2.length; ci++) {
-          var t = (tds2[ci].innerText || "").trim();
-          if (t.length > 10 && !/^\d+$/.test(t)) { sdIdx = ci; break; }
-        }
-        if (sdIdx >= 0) break;
-      }
-    }
-    if (oIdx < 0) {
-      for (var ri3 = 0; ri3 < dataRows.length; ri3++) {
-        var tds3 = Array.from(dataRows[ri3].querySelectorAll("td"));
-        for (var ci2 = (sdIdx >= 0 ? sdIdx + 1 : numIdx + 2); ci2 < tds3.length; ci2++) {
-          var st = tds3[ci2].getAttribute("style") || "";
-          if (st.indexOf("text-align: right") > -1) { oIdx = ci2; break; }
-        }
-        if (oIdx >= 0) break;
-      }
-    }
-  }
-
-  if (sdIdx < 0) { alert("Could not find Short Description column."); return; }
-  if (oIdx < 0) { alert("Could not find Order column."); return; }
-
-  /* compute offset: grouped views add extra td cells (checkbox, expand)
-     that have no matching th, so td index != th index */
-  var offset = 0;
-  if (dataRows.length && ths.length) {
-    var firstRowTds = dataRows[0].querySelectorAll("td").length;
-    if (firstRowTds > ths.length) offset = firstRowTds - ths.length;
-  }
-
   var styles = {
     "":  { b: "#7D3C98", c: "#7D3C98", bg: "#E8DAEF", lbl: "[Initial Action] " },
     "0": { b: "#856404", c: "#856404", bg: "#fff3cd", lbl: "[Update Needed] " },
@@ -77,32 +14,85 @@
   var labels = Object.values(styles).map(function(s) { return s.lbl; });
   labels.push("[Unmapped] ");
 
+  /* --- find Order column index using th name attribute --- */
+  var ths = Array.from(document.querySelectorAll("table.list_table th, table.data_list_table th"));
+  if (!ths.length) ths = Array.from(document.querySelectorAll("table th"));
+  var orderThName = null;
+  ths.forEach(function(th) {
+    var n = (th.getAttribute("name") || "").toLowerCase();
+    if (n === "order" || n === "u_order") orderThName = n;
+  });
+
+  /* --- find data rows --- */
+  var dataRows = Array.from(document.querySelectorAll("table tbody tr")).filter(function(row) {
+    return (row.className || "").indexOf("list_row") > -1;
+  });
+  if (!dataRows.length) { alert("No data rows found."); return; }
+
+  /* --- For each row, find cells by content rather than header index.
+     This works regardless of grouping, extra columns, or column reordering.
+     Order cell: identified by th name matching via td's data attributes,
+     or by finding a td whose text is a small integer (0-89).
+     Short Description cell: the td with the longest text. --- */
+
   var count = 0;
   dataRows.forEach(function(row) {
     var cells = Array.from(row.querySelectorAll("td"));
-    if (cells.length <= Math.max(sdIdx, oIdx) + offset) return;
+    if (cells.length < 2) return;
 
-    var sdCell = cells[sdIdx + offset];
-    var oCell = cells[oIdx + offset];
+    /* find the Order cell: look for td with matching field attribute first */
+    var oCell = null;
+    var sdCell = null;
+
+    cells.forEach(function(td) {
+      var field = (td.getAttribute("data-field") || td.getAttribute("field") || "").toLowerCase();
+      if (field === "order" || field === "u_order") oCell = td;
+      if (field === "short_description") sdCell = td;
+    });
+
+    /* fallback: find Order by content — a cell with just a small number */
+    if (!oCell) {
+      cells.forEach(function(td) {
+        if (oCell) return;
+        var t = (td.innerText || "").trim();
+        if (/^\d{1,2}$/.test(t) && parseInt(t, 10) < 90) oCell = td;
+      });
+    }
+
+    /* fallback: find SD by content — longest text cell, excluding known non-SD content */
+    if (!sdCell) {
+      var best = null, bestLen = 0;
+      cells.forEach(function(td) {
+        if (td === oCell) return;
+        var t = (td.innerText || "").trim();
+        /* skip cells that look like ticket numbers, states, dates, or very short */
+        if (/^(INC|SCTASK|CHG|PRB|RITM)\d+/i.test(t)) return;
+        if (/^(Open|Pending|Closed|Resolved|New|Active|Awaiting)/i.test(t) && t.length < 30) return;
+        if (t.length > bestLen) { bestLen = t.length; best = td; }
+      });
+      sdCell = best;
+    }
+
+    if (!oCell || !sdCell) return;
+
+    /* read order value */
     var raw = (oCell.innerText || "").trim();
     var match = raw.match(/^(\d+)/);
     var orderVal = match ? match[1] : "";
     var key = (orderVal && orderVal !== "0") ? orderVal.padStart(2, "0").substring(0, 1) : "";
     var s = styles.hasOwnProperty(key) ? styles[key] : styles[""];
 
-    /* clean any previous labels */
+    /* clean any previous labels from SD */
     var sdText = (sdCell.innerText || "").trim();
     labels.forEach(function(l) { sdText = sdText.replace(l, "").trim(); });
     sdCell.innerText = sdText;
 
-    /* apply color to short description */
+    /* apply color to short description only */
     sdCell.style.borderBottom = "1px solid " + s.b;
     sdCell.style.color = s.c;
     sdCell.style.backgroundColor = s.bg;
     sdCell.innerHTML = s.lbl + sdCell.innerHTML;
     sdCell.title = sdCell.innerText;
-
-    /* order cell left unstyled — color on SD only */
 
     if (sdCell.innerText.length > 90) {
       sdCell.innerText = sdCell.innerText.substring(0, 87) + "...";
