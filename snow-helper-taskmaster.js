@@ -54,6 +54,14 @@
   if (sdIdx < 0) { alert("Could not find Short Description column."); return; }
   if (oIdx < 0) { alert("Could not find Order column."); return; }
 
+  /* compute offset: grouped views add extra td cells (checkbox, expand)
+     that have no matching th, so td index != th index */
+  var offset = 0;
+  if (dataRows.length && ths.length) {
+    var firstRowTds = dataRows[0].querySelectorAll("td").length;
+    if (firstRowTds > ths.length) offset = firstRowTds - ths.length;
+  }
+
   var styles = {
     "":  { b: "#7D3C98", c: "#7D3C98", bg: "#E8DAEF", lbl: "[Initial Action] " },
     "0": { b: "#856404", c: "#856404", bg: "#fff3cd", lbl: "[Update Needed] " },
@@ -72,10 +80,10 @@
   var count = 0;
   dataRows.forEach(function(row) {
     var cells = Array.from(row.querySelectorAll("td"));
-    if (cells.length <= Math.max(sdIdx, oIdx)) return;
+    if (cells.length <= Math.max(sdIdx, oIdx) + offset) return;
 
-    var sdCell = cells[sdIdx];
-    var oCell = cells[oIdx];
+    var sdCell = cells[sdIdx + offset];
+    var oCell = cells[oIdx + offset];
     var raw = (oCell.innerText || "").trim();
     var match = raw.match(/^(\d+)/);
     var orderVal = match ? match[1] : "";
