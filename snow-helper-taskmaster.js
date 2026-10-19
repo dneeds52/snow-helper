@@ -14,71 +14,47 @@
   var labels = Object.values(styles).map(function(s) { return s.lbl; });
   labels.push("[Unmapped] ");
 
-  /* --- find Order column index using th name attribute --- */
-  var ths = Array.from(document.querySelectorAll("table.list_table th, table.data_list_table th"));
-  if (!ths.length) ths = Array.from(document.querySelectorAll("table th"));
-  var orderThName = null;
-  ths.forEach(function(th) {
-    var n = (th.getAttribute("name") || "").toLowerCase();
-    if (n === "order" || n === "u_order") orderThName = n;
-  });
-
   /* --- find data rows --- */
   var dataRows = Array.from(document.querySelectorAll("table tbody tr")).filter(function(row) {
     return (row.className || "").indexOf("list_row") > -1;
   });
   if (!dataRows.length) { alert("No data rows found."); return; }
 
-  /* --- For each row, find cells by content rather than header index.
-     This works regardless of grouping, extra columns, or column reordering.
-     Order cell: identified by th name matching via td's data attributes,
-     or by finding a td whose text is a small integer (0-89).
-     Short Description cell: the td with the longest text. --- */
-
   var count = 0;
   dataRows.forEach(function(row) {
     var cells = Array.from(row.querySelectorAll("td"));
     if (cells.length < 2) return;
 
-    /* find the Order cell: look for td with matching field attribute first */
-    var oCell = null;
-    var sdCell = null;
+    /* Step 1: Find the Number cell — contains SCTASK/INC/CHG/PRB/RITM pattern.
+       This is the most reliable anchor in any SN list view. */
+    var numIdx = -1;
+    cells.forEach(function(td, i) {
+      if (numIdx >= 0) return;
+      var t = (td.innerText || "").trim();
+      if (/^(INC|SCTASK|CHG|PRB|RITM)\d+/i.test(t)) numIdx = i;
+    });
+    if (numIdx < 0) return; /* skip rows without a ticket number */
 
-    cells.forEach(function(td) {
-      var field = (td.getAttribute("data-field") || td.getAttribute("field") || "").toLowerCase();
-      if (field === "order" || field === "u_order") oCell = td;
-      if (field === "short_description") sdCell = td;
+    /* Step 2: Short Description is always the cell right after Number */
+    var sdIdx = numIdx + 1;
+    if (sdIdx >= cells.length) return;
+    var sdCell = cells[sdIdx];
+
+    /* Step 3: Find Order cell — scan remaining cells for a small integer */
+    var oCell = null;
+    cells.forEach(function(td, i) {
+      if (oCell || i === numIdx || i === sdIdx) return;
+      var t = (td.innerText || "").trim();
+      if (/^\d{1,2}$/.test(t) && parseInt(t, 10) < 90) oCell = td;
     });
 
-    /* fallback: find Order by content — a cell with just a small number */
-    if (!oCell) {
-      cells.forEach(function(td) {
-        if (oCell) return;
-        var t = (td.innerText || "").trim();
-        if (/^\d{1,2}$/.test(t) && parseInt(t, 10) < 90) oCell = td;
-      });
+    /* read order value — if no Order cell visible, default to empty (Initial Action) */
+    var orderVal = "";
+    if (oCell) {
+      var raw = (oCell.innerText || "").trim();
+      var match = raw.match(/^(\d+)/);
+      orderVal = match ? match[1] : "";
     }
-
-    /* fallback: find SD by content — longest text cell, excluding known non-SD content */
-    if (!sdCell) {
-      var best = null, bestLen = 0;
-      cells.forEach(function(td) {
-        if (td === oCell) return;
-        var t = (td.innerText || "").trim();
-        /* skip cells that look like ticket numbers, states, dates, or very short */
-        if (/^(INC|SCTASK|CHG|PRB|RITM)\d+/i.test(t)) return;
-        if (/^(Open|Pending|Closed|Resolved|New|Active|Awaiting)/i.test(t) && t.length < 30) return;
-        if (t.length > bestLen) { bestLen = t.length; best = td; }
-      });
-      sdCell = best;
-    }
-
-    if (!oCell || !sdCell) return;
-
-    /* read order value */
-    var raw = (oCell.innerText || "").trim();
-    var match = raw.match(/^(\d+)/);
-    var orderVal = match ? match[1] : "";
     var key = (orderVal && orderVal !== "0") ? orderVal.padStart(2, "0").substring(0, 1) : "";
     var s = styles.hasOwnProperty(key) ? styles[key] : styles[""];
 
