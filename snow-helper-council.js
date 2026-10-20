@@ -18,46 +18,71 @@ var SITES = ['UNV','MEM','MARL','HALC','CLIN','HHSB','HHWEB','MRMC','NV'];
 
 var ov = document.createElement('div');
 ov.id = 'councilOverlay';
-ov.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;background:#0f0f1a;color:#e2e8f0;z-index:999999;font-family:system-ui,sans-serif;border-radius:12px;border:2px solid #a78bfa;box-shadow:0 8px 32px rgba(0,0,0,.6);padding:0';
+ov.style.cssText = 'position:fixed;top:120px;left:50%;transform:translateX(-50%);width:420px;background:#0f0f1a;color:#e2e8f0;z-index:999999;font-family:system-ui,sans-serif;border-radius:12px;border:2px solid #a78bfa;box-shadow:0 8px 32px rgba(0,0,0,.6);padding:0';
 
 var html = '';
-/* header */
-html += '<div style="padding:12px 16px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px 10px 0 0;border-bottom:1px solid #2a2a3e">';
+/* header — draggable */
+html += '<div id="councilHeader" style="padding:14px 18px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px 10px 0 0;border-bottom:1px solid #2a2a3e;cursor:grab;user-select:none">';
 html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-html += '<div style="font-size:.9rem;font-weight:700;color:#a78bfa">🏛️ PC Approval</div>';
-html += '<button id="councilClose" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:2px 8px;border-radius:4px;cursor:pointer;font:inherit;font-size:.8rem">✕</button></div>';
-html += '<div style="font-size:.8rem;color:#67e8f9;margin-top:4px">' + num + '</div>';
-html += '<div style="font-size:.82rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + sd.replace(/"/g, '&quot;') + '">' + sd.replace(/</g, '&lt;') + '</div>';
+html += '<div style="font-size:1rem;font-weight:700;color:#a78bfa">🏛️ PC Approval</div>';
+html += '<button id="councilClose" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:3px 10px;border-radius:5px;cursor:pointer;font:inherit;font-size:.85rem">✕</button></div>';
+html += '<div style="font-size:.9rem;color:#67e8f9;margin-top:5px">' + num + '</div>';
+html += '<div style="font-size:.9rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + sd.replace(/"/g, '&quot;') + '">' + sd.replace(/</g, '&lt;') + '</div>';
 html += '</div>';
 
 /* site chips */
-html += '<div style="padding:12px 16px">';
-html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+html += '<div style="padding:14px 18px">';
+html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
 
 SITES.forEach(function(s, idx) {
-  html += '<label id="councilRow' + idx + '" style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;cursor:pointer;transition:all .15s;user-select:none">';
-  html += '<input type="checkbox" class="councilCk" data-code="' + s + '" style="accent-color:#34d399;width:14px;height:14px;flex:none;margin:0">';
-  html += '<span style="font-weight:600;font-size:.82rem;color:#e2e8f0">' + s + '</span>';
+  html += '<label id="councilRow' + idx + '" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1a1a2e;border:2px solid #2a2a3e;border-radius:8px;cursor:pointer;transition:all .15s;user-select:none">';
+  html += '<input type="checkbox" class="councilCk" data-code="' + s + '" style="accent-color:#34d399;width:16px;height:16px;flex:none;margin:0">';
+  html += '<span style="font-weight:700;font-size:.95rem;color:#e2e8f0">' + s + '</span>';
   html += '</label>';
 });
 
 html += '</div>';
 
 /* counter */
-html += '<div id="councilCount" style="text-align:center;margin:12px 0 8px;font-size:1.1rem;font-weight:700;color:#64748b">0 / ' + SITES.length + '</div>';
+html += '<div id="councilCount" style="text-align:center;margin:14px 0 10px;font-size:1.2rem;font-weight:700;color:#64748b">0 / ' + SITES.length + '</div>';
 
 /* action buttons */
-html += '<div style="display:flex;gap:6px">';
-html += '<button id="councilAll" style="flex:1;padding:6px;border-radius:5px;border:1px solid #a78bfa;background:none;color:#a78bfa;font:inherit;font-size:.8rem;cursor:pointer">All</button>';
-html += '<button id="councilClear" style="flex:1;padding:6px;border-radius:5px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:.8rem;cursor:pointer">Clear</button>';
-html += '<button id="councilCopy" style="flex:1;padding:6px;border-radius:5px;border:1px solid #34d399;background:#34d399;color:#0f0f1a;font:inherit;font-size:.8rem;font-weight:600;cursor:pointer">Copy</button>';
-html += '<button id="councilNote" style="flex:1;padding:6px;border-radius:5px;border:1px solid #67e8f9;background:none;color:#67e8f9;font:inherit;font-size:.8rem;cursor:pointer">Work Note</button>';
+html += '<div style="display:flex;gap:8px">';
+html += '<button id="councilAll" style="flex:1;padding:8px;border-radius:6px;border:1px solid #a78bfa;background:none;color:#a78bfa;font:inherit;font-size:.9rem;cursor:pointer">All</button>';
+html += '<button id="councilClear" style="flex:1;padding:8px;border-radius:6px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:.9rem;cursor:pointer">Clear</button>';
+html += '<button id="councilCopy" style="flex:1;padding:8px;border-radius:6px;border:1px solid #34d399;background:#34d399;color:#0f0f1a;font:inherit;font-size:.9rem;font-weight:600;cursor:pointer">Copy</button>';
+html += '<button id="councilNote" style="flex:1;padding:8px;border-radius:6px;border:1px solid #67e8f9;background:none;color:#67e8f9;font:inherit;font-size:.9rem;cursor:pointer">Work Note</button>';
 html += '</div>';
 
 html += '</div>';
 ov.innerHTML = html;
 document.body.appendChild(ov);
 
+/* --- Drag logic --- */
+var hdr = document.getElementById('councilHeader');
+var dragging = false, dx = 0, dy = 0;
+hdr.addEventListener('mousedown', function(e) {
+  if (e.target.id === 'councilClose') return;
+  dragging = true;
+  var rect = ov.getBoundingClientRect();
+  dx = e.clientX - rect.left;
+  dy = e.clientY - rect.top;
+  ov.style.transform = 'none';
+  ov.style.left = rect.left + 'px';
+  ov.style.top = rect.top + 'px';
+  hdr.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+document.addEventListener('mousemove', function(e) {
+  if (!dragging) return;
+  ov.style.left = (e.clientX - dx) + 'px';
+  ov.style.top = (e.clientY - dy) + 'px';
+});
+document.addEventListener('mouseup', function() {
+  if (dragging) { dragging = false; hdr.style.cursor = 'grab'; }
+});
+
+/* --- Wire up --- */
 function updateCount() {
   var checks = ov.querySelectorAll('.councilCk');
   var n = 0;
