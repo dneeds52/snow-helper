@@ -24,10 +24,10 @@ var html = '';
 /* header — draggable */
 html += '<div id="councilHeader" style="padding:14px 18px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px 10px 0 0;border-bottom:1px solid #2a2a3e;cursor:grab;user-select:none">';
 html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-html += '<div style="font-size:1rem;font-weight:700;color:#a78bfa">🏛️ PC Approval</div>';
-html += '<button id="councilClose" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:3px 10px;border-radius:5px;cursor:pointer;font:inherit;font-size:.85rem">✕</button></div>';
-html += '<div style="font-size:.9rem;color:#67e8f9;margin-top:5px">' + num + '</div>';
-html += '<div style="font-size:.9rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + sd.replace(/"/g, '&quot;') + '">' + sd.replace(/</g, '&lt;') + '</div>';
+html += '<div style="font-size:16px;font-weight:700;color:#a78bfa">🏛️ PC Approval</div>';
+html += '<button id="councilClose" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:3px 10px;border-radius:5px;cursor:pointer;font:inherit;font-size:14px">✕</button></div>';
+html += '<div style="font-size:15px;color:#67e8f9;margin-top:5px">' + num + '</div>';
+html += '<div style="font-size:15px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + sd.replace(/"/g, '&quot;') + '">' + sd.replace(/</g, '&lt;') + '</div>';
 html += '</div>';
 
 /* site chips */
@@ -36,22 +36,22 @@ html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
 
 SITES.forEach(function(s, idx) {
   html += '<label id="councilRow' + idx + '" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1a1a2e;border:2px solid #2a2a3e;border-radius:8px;cursor:pointer;transition:all .15s;user-select:none">';
-  html += '<input type="checkbox" class="councilCk" data-code="' + s + '" style="accent-color:#34d399;width:16px;height:16px;flex:none;margin:0">';
-  html += '<span style="font-weight:700;font-size:.95rem;color:#e2e8f0">' + s + '</span>';
+  html += '<input type="checkbox" class="councilCk" data-code="' + s + '" style="accent-color:#34d399;width:18px;height:18px;flex:none;margin:0">';
+  html += '<span style="font-weight:700;font-size:15px;color:#e2e8f0">' + s + '</span>';
   html += '</label>';
 });
 
 html += '</div>';
 
 /* counter */
-html += '<div id="councilCount" style="text-align:center;margin:14px 0 10px;font-size:1.2rem;font-weight:700;color:#64748b">0 / ' + SITES.length + '</div>';
+html += '<div id="councilCount" style="text-align:center;margin:14px 0 10px;font-size:18px;font-weight:700;color:#64748b">0 / ' + SITES.length + '</div>';
 
 /* action buttons */
 html += '<div style="display:flex;gap:8px">';
-html += '<button id="councilAll" style="flex:1;padding:8px;border-radius:6px;border:1px solid #a78bfa;background:none;color:#a78bfa;font:inherit;font-size:.9rem;cursor:pointer">All</button>';
-html += '<button id="councilClear" style="flex:1;padding:8px;border-radius:6px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:.9rem;cursor:pointer">Clear</button>';
-html += '<button id="councilCopy" style="flex:1;padding:8px;border-radius:6px;border:1px solid #34d399;background:#34d399;color:#0f0f1a;font:inherit;font-size:.9rem;font-weight:600;cursor:pointer">Copy</button>';
-html += '<button id="councilNote" style="flex:1;padding:8px;border-radius:6px;border:1px solid #67e8f9;background:none;color:#67e8f9;font:inherit;font-size:.9rem;cursor:pointer">Work Note</button>';
+html += '<button id="councilAll" style="flex:1;padding:8px;border-radius:6px;border:1px solid #a78bfa;background:none;color:#a78bfa;font:inherit;font-size:14px;cursor:pointer">All</button>';
+html += '<button id="councilClear" style="flex:1;padding:8px;border-radius:6px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:14px;cursor:pointer">Clear</button>';
+html += '<button id="councilCopy" style="flex:1;padding:8px;border-radius:6px;border:1px solid #34d399;background:#34d399;color:#0f0f1a;font:inherit;font-size:14px;font-weight:600;cursor:pointer">Copy</button>';
+html += '<button id="councilNote" style="flex:1;padding:8px;border-radius:6px;border:1px solid #67e8f9;background:none;color:#67e8f9;font:inherit;font-size:14px;cursor:pointer">Work Note</button>';
 html += '</div>';
 
 html += '</div>';
