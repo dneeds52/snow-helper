@@ -151,6 +151,7 @@ var tools=[
   {name:'Clean',      icon:'🧹',color:'#a78bfa',fn:cleanTicket},
   {name:'Stale',      icon:'⏰',color:'#f87171',fn:staleCheck},
   {name:'PC Review',  icon:'📋',color:'#34d399',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js')}},
+  {name:'PC Approval', icon:'🏛️',color:'#a78bfa',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-council.js')}},
   {name:'_spacer'},
   {name:'_link',icon:'⚙️',color:'#a78bfa',url:'https://dneeds52.github.io/snow-helper/snow-helper-triage-tagger.html?popout=1'},
   {name:'Grabber',    icon:'📋',color:'#38bdf8',fn:grabTicket},
