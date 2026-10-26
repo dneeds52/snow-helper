@@ -144,6 +144,7 @@ lbl.textContent='SNOW';
 menu.appendChild(lbl);
 
 var tools=[
+  {name:"What's Next",icon:'👉',color:'#67e8f9',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-next.js')}},
   {name:'TaskMaster', icon:'🏅',color:'#fb923c',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js')}},
   {name:'Copy Info',  icon:'🔗',color:'#60a5fa',fn:copyTicket},
   {name:'Email',      icon:'✉️',color:'#fbbf24',fn:emailTicket},
