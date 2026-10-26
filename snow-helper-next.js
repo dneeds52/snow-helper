@@ -63,22 +63,69 @@
     return q('sys_user', 'sys_id=javascript:gs.getUserID()', 'user_name', 1).then(function (r) { return r[0] ? v(r[0].user_name) : ''; }).catch(function () { return ''; });
   }
 
-  /* ---------------- overlay shell ---------------- */
+  /* ---------------- overlay shell ----------------
+     Docks over ServiceNow's left navigator (Filter navigator + menus) when it can find it,
+     otherwise opens on the right edge. Collapses to a thin strip so the navigator shows again. */
   var ov = document.createElement('div');
   ov.id = OV_ID;
-  ov.style.cssText = 'position:fixed;top:0;right:0;width:420px;max-width:100vw;height:100vh;background:#0f0f1a;color:#e2e8f0;z-index:999999;' +
-    'font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;border-left:2px solid #a78bfa;box-shadow:-8px 0 32px rgba(0,0,0,.5);display:flex;flex-direction:column';
+  ov.style.cssText = 'position:fixed;background:#0f0f1a;color:#e2e8f0;z-index:999999;' +
+    'font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;box-sizing:border-box;display:flex';
   ov.innerHTML =
+    '<div id="snnMain" style="display:flex;flex-direction:column;width:100%;height:100%;min-width:0">' +
     '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
       '<span style="font-size:15px;font-weight:700;color:#67e8f9;letter-spacing:.04em">WHAT\u2019S NEXT</span>' +
       '<span id="snnSub" style="font-size:12px;color:#64748b"></span>' +
-      '<button data-a="close" title="Close" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u2715</button>' +
+      '<button data-a="collapse" id="snnCollapse" title="Collapse" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u25c0</button>' +
+      '<button data-a="close" title="Close" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u2715</button>' +
     '</div>' +
-    '<div style="display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
-      tabBtn('next', 'Next') + tabBtn('add', '+ Add') + tabBtn('wrap', 'Wrap up') + tabBtn('weekly', 'Weekly update') +
+    '<div style="display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0;flex-wrap:wrap">' +
+      tabBtn('next', 'Next') + tabBtn('add', '+ Add') + tabBtn('wrap', 'Wrap up') + tabBtn('weekly', 'Weekly') +
     '</div>' +
-    '<div id="snnBody" style="flex:1;overflow-y:auto;padding:16px 14px"></div>';
+    '<div id="snnBody" style="flex:1;overflow-y:auto;padding:16px 14px"></div>' +
+    '</div>' +
+    '<div id="snnStrip" data-a="expand" title="Open What\u2019s Next" style="display:none;width:100%;height:100%;cursor:pointer;align-items:center;justify-content:center;box-sizing:border-box;white-space:nowrap">' +
+      '<span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:#67e8f9">\u25b6 WHAT\u2019S NEXT</span>' +
+    '</div>';
   document.body.appendChild(ov);
+  var NAV_SEL = ['#nav_west', '.navpage-nav', '#gsft_nav'];
+  function findNav() {
+    for (var i = 0; i < NAV_SEL.length; i++) {
+      var el = document.querySelector(NAV_SEL[i]);
+      if (el) { var r = el.getBoundingClientRect(); if (r.width >= 150 && r.height >= 200) return r; }
+    }
+    return null;
+  }
+  function place() {
+    if (!document.body.contains(ov)) { clearInterval(placeTimer); return; }
+    var c = !!S.collapsed, r = findNav();
+    document.getElementById('snnMain').style.display = c ? 'none' : 'flex';
+    document.getElementById('snnStrip').style.display = c ? 'flex' : 'none';
+    ov.style.borderRadius = c ? '8px' : '0';
+    if (c) {
+      // collapsed: small button at the bottom of the menu (or bottom-right corner), menu stays readable
+      ov.style.width = '150px'; ov.style.height = '34px'; ov.style.boxShadow = '0 4px 16px rgba(0,0,0,.4)';
+      ov.style.border = '1px solid #a78bfa';
+      if (r) { ov.style.left = (r.left + 8) + 'px'; ov.style.right = 'auto'; ov.style.top = (r.bottom - 46) + 'px'; }
+      else { ov.style.left = 'auto'; ov.style.right = '12px'; ov.style.top = (window.innerHeight - 46) + 'px'; }
+      return;
+    }
+    ov.style.border = 'none';
+    if (r) {
+      ov.style.left = r.left + 'px'; ov.style.right = 'auto'; ov.style.top = r.top + 'px';
+      ov.style.height = r.height + 'px'; ov.style.width = Math.max(r.width, 300) + 'px';
+      ov.style.borderRight = '2px solid #a78bfa';
+      ov.style.boxShadow = r.width < 300 ? '8px 0 24px rgba(0,0,0,.4)' : 'none';
+      document.getElementById('snnCollapse').textContent = '\u25c0';
+    } else {
+      ov.style.left = 'auto'; ov.style.right = '0'; ov.style.top = '0'; ov.style.height = '100vh';
+      ov.style.width = '420px'; ov.style.maxWidth = '100vw';
+      ov.style.borderLeft = '2px solid #a78bfa';
+      ov.style.boxShadow = '-8px 0 32px rgba(0,0,0,.5)';
+      document.getElementById('snnCollapse').textContent = '\u25b6';
+    }
+  }
+  var placeTimer = setInterval(place, 1000);
+  window.addEventListener('resize', place);
   function tabBtn(id, label) { return '<button data-tab="' + id + '" style="flex:1;padding:6px 4px;border-radius:6px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:12px;font-weight:600;cursor:pointer">' + label + '</button>'; }
   var body = document.getElementById('snnBody');
   var tab = 'next';
@@ -338,7 +385,9 @@
     var a = el.getAttribute('data-a'), id = el.getAttribute('data-id');
     var seen = S.seen[TODAY];
     switch (a) {
-      case 'close': ov.remove(); break;
+      case 'close': ov.remove(); clearInterval(placeTimer); break;
+      case 'collapse': S.collapsed = true; save(); place(); break;
+      case 'expand': S.collapsed = false; save(); place(); break;
       case 'refresh': loadAll(); break;
       case 'open': var t = byId(id); if (t) window.open(BASE + '/' + t.table + '.do?sys_id=' + t.id, '_blank'); break;
       case 'next': if (seen.indexOf(id) < 0) seen.push(id); save(); render(); break;
@@ -356,6 +405,7 @@
     }
   });
 
+  place();
   setTab('next');
   loadAll();
 })();
