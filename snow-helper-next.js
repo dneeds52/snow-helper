@@ -78,6 +78,9 @@
     return q('sys_user', 'sys_id=javascript:gs.getUserID()', 'user_name', 1).then(function (r) { return r[0] ? v(r[0].user_name) : ''; }).catch(function () { return ''; });
   }
 
+  // Diagonal-arrow icons: inward = minimize, outward = expand
+  var ICON_MIN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+  var ICON_MAX = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
   /* ---------------- overlay shell ----------------
      Docks over ServiceNow's left navigator (Filter navigator + menus) when it can find it,
      otherwise opens on the right edge. Collapses to a thin strip so the navigator shows again. */
@@ -90,7 +93,7 @@
     '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
       '<span style="font-size:15px;font-weight:700;color:#67e8f9;letter-spacing:.04em">WHAT\u2019S NEXT</span>' +
       '<span id="snnSub" style="font-size:12px;color:#64748b"></span>' +
-      '<button data-a="collapse" id="snnCollapse" title="Collapse" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u25c0</button>' +
+      '<button data-a="collapse" id="snnCollapse" title="Minimize" aria-label="Minimize" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:5px 7px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_MIN + '</button>' +
       '<button data-a="close" title="Close" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u2715</button>' +
     '</div>' +
     '<div style="display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0;flex-wrap:wrap">' +
@@ -99,7 +102,7 @@
     '<div id="snnBody" style="flex:1;overflow-y:auto;padding:16px 14px"></div>' +
     '</div>' +
     '<div id="snnStrip" data-a="expand" title="Open What\u2019s Next" style="display:none;width:100%;height:100%;cursor:pointer;align-items:center;justify-content:center;box-sizing:border-box;white-space:nowrap">' +
-      '<span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:#67e8f9">\u25b6 WHAT\u2019S NEXT</span>' +
+      '<span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#67e8f9">' + ICON_MAX + 'WHAT\u2019S NEXT</span>' +
     '</div>';
   document.body.appendChild(ov);
   var NAV_SEL = ['#nav_west', '.navpage-nav', '#gsft_nav'];
@@ -130,13 +133,11 @@
       ov.style.height = r.height + 'px'; ov.style.width = Math.max(r.width, 300) + 'px';
       ov.style.borderRight = '2px solid #a78bfa';
       ov.style.boxShadow = r.width < 300 ? '8px 0 24px rgba(0,0,0,.4)' : 'none';
-      document.getElementById('snnCollapse').textContent = '\u25c0';
     } else {
       ov.style.left = 'auto'; ov.style.right = '0'; ov.style.top = '0'; ov.style.height = '100vh';
       ov.style.width = '420px'; ov.style.maxWidth = '100vw';
       ov.style.borderLeft = '2px solid #a78bfa';
       ov.style.boxShadow = '-8px 0 32px rgba(0,0,0,.5)';
-      document.getElementById('snnCollapse').textContent = '\u25b6';
     }
   }
   var placeTimer = setInterval(place, 1000);
