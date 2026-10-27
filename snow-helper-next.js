@@ -93,7 +93,8 @@
     '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
       '<span style="font-size:15px;font-weight:700;color:#67e8f9;letter-spacing:.04em">WHAT\u2019S NEXT</span>' +
       '<span id="snnSub" style="font-size:12px;color:#64748b"></span>' +
-      '<button data-a="collapse" id="snnCollapse" title="Minimize" aria-label="Minimize" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:5px 7px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_MIN + '</button>' +
+      '<button data-a="tab-help" title="How to use" aria-label="How to use" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:700">?</button>' +
+      '<button data-a="collapse" id="snnCollapse" title="Minimize" aria-label="Minimize" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:5px 7px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_MIN + '</button>' +
       '<button data-a="close" title="Close" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u2715</button>' +
     '</div>' +
     '<div style="display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0;flex-wrap:wrap">' +
@@ -229,6 +230,7 @@
     if (tab === 'wrap') return renderWrap();
     if (tab === 'weekly') return renderWeekly();
     if (tab === 'parked') return renderParked();
+    if (tab === 'help') return renderHelp();
   }
 
   function renderNext() {
@@ -289,6 +291,33 @@
   function parkedLink() {
     var n = tickets.filter(isParked).length;
     return n ? btn('tab-parked', n + ' parked until later \u2192', 'border:none;background:none;color:#64748b;padding:4px 0') : '';
+  }
+  function renderHelp() {
+    document.getElementById('snnSub').textContent = '';
+    function sec(title, items) {
+      return '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:16px 0 6px">' + title + '</div>' +
+        items.map(function (i) { return '<div style="padding:5px 0;line-height:1.45;font-size:13px">' + i + '</div>'; }).join('');
+    }
+    function b(t) { return '<b style="color:#e2e8f0">' + t + '</b>'; }
+    var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 4px') +
+      '<div style="font-size:16px;font-weight:600;margin:6px 0 2px">How to use</div>' +
+      '<div style="font-size:12px;color:#94a3b8">You don\u2019t need to finish the list. One card, one decision.</div>' +
+      '<div style="color:#cbd5e1">' +
+      sec('EACH CARD', [
+        b('15 min or less?') + ' Open it, do one thing, then ' + b('Next') + '.',
+        b('Bigger and matters now?') + ' Give it a 30-minute block.',
+        b('Not today?') + ' Skip for today.',
+        b('After Nashoba?') + ' Park until 2/22.'
+      ]) +
+      sec('EACH DAY', [
+        b('Morning:') + ' clear the <span style="color:#a78bfa">purple</span> and <span style="color:#fbbf24">yellow</span> cards.',
+        b('Rest of day:') + ' a few <span style="color:#60a5fa">blue</span> cards.',
+        b('End of day:') + ' Wrap up \u2192 copy to OneNote.',
+        b('Friday:') + ' Weekly \u2192 copy the Nashoba update.'
+      ]) +
+      '<div style="font-size:12px;color:#94a3b8;margin-top:16px;padding-top:12px;border-top:1px solid #2a2a3e">A good day = purple and yellow done, plus a couple of blue.</div>' +
+      '</div>';
+    body.innerHTML = h;
   }
   function renderParked() {
     document.getElementById('snnSub').textContent = '';
@@ -467,6 +496,7 @@
       case 'unpark': unpark(id, el); break;
       case 'tab-parked': setTab('parked'); break;
       case 'tab-next': setTab('next'); break;
+      case 'tab-help': setTab(tab === 'help' ? 'next' : 'help'); break;
       case 'restart': S.seen[TODAY] = []; save(); render(); break;
       case 'adone': S.adhoc.forEach(function (x) { if (x.id === id) x.done = TODAY; }); save(); render(); break;
       case 'adel': S.adhoc = S.adhoc.filter(function (x) { return x.id !== id; }); save(); render(); break;
