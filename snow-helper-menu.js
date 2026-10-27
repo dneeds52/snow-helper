@@ -70,12 +70,33 @@ function emailTicket(btn){
   var num=gf.getValue('number')||'',sd=gf.getValue('short_description')||'',desc=gf.getValue('description')||'';
   var sysId=gf.getUniqueValue()||'',tbl=gf.getTableName()||'sc_task';
   var link=location.origin+'/nav_to.do?uri='+tbl+'.do?sys_id='+sysId;
-  var reqName='';try{reqName=gf.getDisplayValue('requested_for')||gf.getDisplayValue('caller_id')||gf.getDisplayValue('requested_by')||''}catch(e){}
-  var fn=(reqName.split(' ')[0])||'there';
-  var reqNum='';try{reqNum=gf.getDisplayValue('request')||''}catch(e){}
-  var nl='\r\n',subj=reqNum?(reqNum+' / '+num+' '+sd):(num+' '+sd);
-  var body='Hi '+fn+'!'+nl+nl+'=== EMAIL INTRO GOES HERE ==='+nl+nl+'________________________________________'+nl+nl+num+' '+sd+nl+link+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
-  navigator.clipboard.writeText('SUBJECT: '+subj+nl+nl+body).then(function(){confetti()});
+  flash(btn,'Looking up name...');
+  requesterInfo(tbl,sysId).then(function(info){
+    var fn=(info.name.split(' ')[0])||'there';
+    var nl='\r\n',subj=info.reqNum?(info.reqNum+' / '+num+' '+sd):(num+' '+sd);
+    var body='Hi '+fn+'!'+nl+nl+'=== EMAIL INTRO GOES HERE ==='+nl+nl+'________________________________________'+nl+nl+num+' '+sd+nl+link+nl+nl+'Description:'+nl+nl+desc+nl+'________________________________________'+nl+nl;
+    var text='SUBJECT: '+subj+nl+nl+body;
+    navigator.clipboard.writeText(text).then(function(){confetti();flash(btn,info.name?'Copied for '+fn:'Copied (no name found)')},function(){prompt('Copy:',text)});
+  });
+}
+
+/* Requester's name for the email greeting. Asks ServiceNow for the person's display name
+   (g_form.getDisplayValue(field) returns the ticket NUMBER, which is why "Hi INC..." happened).
+   Order: requested for (RITM / request), then caller, then requested by, then opened by. */
+function requesterInfo(tbl,sysId){
+  var looksLikeNumber=/^[A-Z]{2,}\d{5,}$/;
+  function boxName(f){try{var b=gf.getDisplayBox&&gf.getDisplayBox(f);return b&&b.value||''}catch(e){return ''}}
+  var fields=['request_item.requested_for','request.requested_for','requested_for','caller_id','requested_by','opened_by'];
+  var fallback={name:'',reqNum:''};
+  ['requested_for','caller_id','requested_by'].some(function(f){var n=boxName(f);if(n&&!looksLikeNumber.test(n)){fallback.name=n;return true}return false});
+  fallback.reqNum=boxName('request');
+  if(!tok||!sysId)return Promise.resolve(fallback);
+  return api('GET','/api/now/table/'+tbl+'/'+sysId+'?sysparm_display_value=true&sysparm_exclude_reference_link=true&sysparm_fields='+fields.concat(['request.number','request_item.request.number']).join(','))
+    .then(function(r){
+      var rec=r&&r.result||{},name='';
+      fields.some(function(f){var v=rec[f];if(v&&typeof v==='string'&&!looksLikeNumber.test(v)){name=v;return true}return false});
+      return {name:name||fallback.name,reqNum:rec['request.number']||rec['request_item.request.number']||fallback.reqNum};
+    }).catch(function(){return fallback});
 }
 
 function cleanTicket(btn){
@@ -144,7 +165,6 @@ lbl.textContent='SNOW';
 menu.appendChild(lbl);
 
 var tools=[
-  {name:"What's Next",icon:'👉',color:'#67e8f9',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-next.js')}},
   {name:'TaskMaster', icon:'🏅',color:'#fb923c',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-taskmaster.js')}},
   {name:'Copy Info',  icon:'🔗',color:'#60a5fa',fn:copyTicket},
   {name:'Email',      icon:'✉️',color:'#fbbf24',fn:emailTicket},
@@ -153,6 +173,7 @@ var tools=[
   {name:'Stale',      icon:'⏰',color:'#f87171',fn:staleCheck},
   {name:'PC Review',  icon:'📋',color:'#34d399',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-pc-review.js')}},
   {name:'PC Approval', icon:'🏛️',color:'#a78bfa',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-council.js')}},
+  {name:"What's Next",icon:'👉',color:'#67e8f9',fn:function(){loadScript('https://dneeds52.github.io/snow-helper/snow-helper-next.js')}},
   {name:'_spacer'},
   {name:'_link',icon:'⚙️',color:'#a78bfa',url:'https://dneeds52.github.io/snow-helper/snow-helper-triage-tagger.html?popout=1'},
   {name:'Grabber',    icon:'📋',color:'#38bdf8',fn:grabTicket},
