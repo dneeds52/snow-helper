@@ -1,6 +1,7 @@
 /* What's Next - one-ticket-at-a-time walk through your assigned work, in triage-process order.
    Loaded by the SNOW menu bookmarklet (snow-helper-menu.js) on any ServiceNow page.
-   READ-ONLY toward ServiceNow: it never changes a ticket.
+   Reads ServiceNow; the only thing it ever changes is a ticket's due date, and only when you click
+   Park until / Bring back.
    Your own state (skips, quick-win tags, ad-hoc items, daily wrap-ups) is saved in this browser
    (localStorage on the ServiceNow site), so it is private to you.
    Show/hide uses element.style.display only (repo rule). */
@@ -11,6 +12,8 @@
 
   /* ---------------- config ---------------- */
   var STALE_DAYS = 7;              // a work note older than this counts as "needs an update"
+  var PARK_DATE = '2027-02-22';    // "Park until" button date (Nashoba go-live 2/1, back on the list ~2/15)
+  var PARK_LEAD = 7;               // a parked ticket comes back this many days before its due date
   var SLA_AT_RISK = 75;            // SLA % elapsed that counts as "in danger"
   var TABLES = ['sc_task', 'incident', 'change_request'];
   var ME = 'assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe'; // ServiceNow's built-in "Me" filter
@@ -45,13 +48,25 @@
   function daysAgo(iso) { if (!iso) return null; var t = Date.parse(iso.replace(' ', 'T') + 'Z'); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
   function laneKey(order) { var o = String(order == null ? '' : order).trim(); return (o && o !== '0') ? o.padStart(2, '0').charAt(0) : ''; }
 
-  /* ---------------- ServiceNow API (read-only GETs) ---------------- */
+  /* ---------------- ServiceNow API (reads, plus the one due-date write below) ---------------- */
   function api(path) {
     if (MOCK) return Promise.resolve(MOCK.route(path));
     return fetch(BASE + path, { headers: { Accept: 'application/json', 'X-UserToken': tok } })
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (j) { return j.result || []; });
   }
+  // The ONLY write What's Next makes: setting or clearing a ticket's due date, when you click Park / Bring back.
+  function setDue(t, ymd) {
+    var val = ymd ? ymd + ' 17:00:00' : '';   // noon Eastern, stored in UTC
+    if (MOCK) return Promise.resolve(MOCK.write(t.table, t.id, { due_date: val }));
+    return fetch(BASE + '/api/now/table/' + t.table + '/' + t.id + '?sysparm_input_display_value=false', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-UserToken': tok },
+      body: JSON.stringify({ due_date: val })
+    }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  function daysUntil(iso) { if (!iso) return null; var t = Date.parse(iso.replace(' ', 'T') + 'Z'); return isNaN(t) ? null : Math.ceil((t - Date.now()) / 86400000); }
+  function shortDate(iso) { if (!iso) return ''; var d = new Date(Date.parse(iso.replace(' ', 'T') + 'Z')); return (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2); }
+  function isParked(t) { var d = daysUntil(t.due); return d != null && d > PARK_LEAD; }
   function q(table, query, fields, limit) {
     return api('/api/now/table/' + table + '?sysparm_query=' + encodeURIComponent(query) + '&sysparm_fields=' + fields +
       '&sysparm_display_value=all&sysparm_exclude_reference_link=true&sysparm_limit=' + (limit || 500));
@@ -142,13 +157,13 @@
   var tickets = [], loaded = false, loadErr = '', userName = '', todayNotes = [];
   function loadAll() {
     loaded = false; loadErr = ''; render();
-    var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name';
+    var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date';
     Promise.all(TABLES.map(function (t) {
       return q(t, OPEN + '^' + ME, fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; }).catch(function () { return []; });
     })).then(function (sets) {
       tickets = [].concat.apply([], sets).map(function (x) {
         return { id: v(x.sys_id), table: x._table, number: dv(x.number), sd: dv(x.short_description), order: v(x.order),
-                 lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), lastNote: null, sla: null };
+                 lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), due: v(x.due_date) || '', lastNote: null, sla: null };
       });
       if (!tickets.length) return;
       var ids = tickets.map(function (t) { return t.id; });
@@ -171,7 +186,7 @@
   function buildQueue() {
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
-    var live = tickets.filter(function (t) { return !S.skip[t.id]; });
+    var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t); });
     // 1. Initial Action - blank Order
     live.filter(function (t) { return t.lane === ''; })
       .sort(function (a, b) { return (a.opened || '') < (b.opened || '') ? -1 : 1; })
@@ -212,6 +227,7 @@
     if (tab === 'add') return renderAdd();
     if (tab === 'wrap') return renderWrap();
     if (tab === 'weekly') return renderWeekly();
+    if (tab === 'parked') return renderParked();
   }
 
   function renderNext() {
@@ -230,6 +246,7 @@
       var hk = Object.keys(hidden);
       if (hk.length) h += '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Not in the walk: ' + hk.map(function (k) { return hidden[k] + ' ' + k; }).join(' \u00b7 ') + '</div>';
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('restart', 'Start over') + btn('tab-wrap', 'Wrap up the day', GO) + '</div>';
+      h += '<div style="margin-top:18px">' + parkedLink() + '</div>';
       body.innerHTML = h; return;
     }
     var it = cur.item, col = STEP_COLOR[cur.step], isTicket = cur.step !== 'adhoc';
@@ -245,6 +262,7 @@
       h += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin:8px 0 10px">' + esc(it.title) + '</div>';
     }
     h += '<div style="font-size:13px;color:#cbd5e1">' + esc(cur.why) + '</div>';
+    if (isTicket && S.parked && S.parked[it.id] && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
     if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) + '</div>';
     h += '</div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
@@ -254,7 +272,38 @@
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('skip', 'Skip for today', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id);
     if (isTicket) h += btn('quick', S.quick[it.id] ? '\u2605 Quick win (untag)' : '\u2606 Quick win', 'border:1px solid #2a2a3e;background:none;color:' + (S.quick[it.id] ? '#fb923c' : '#94a3b8'), it.id);
     h += '</div>';
-    if (seen.length) h += '<div style="margin-top:22px">' + btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') + '</div>';
+    if (isTicket) {
+      var pd = PARK_DATE.split('-');
+      h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">' +
+        btn('park', '\u23f8 Park until ' + (+pd[1]) + '/' + (+pd[2]), 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id) +
+        '<button data-a="parkother" data-id="' + it.id + '" style="background:none;border:none;color:#64748b;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline">other date</button>' +
+        '<span id="snnParkOther" style="display:none;gap:6px;align-items:center"><input type="date" id="snnParkDate" style="padding:5px 7px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:12px;color-scheme:dark">' +
+        btn('parkgo', 'Park', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:5px 10px', it.id) + '</span></div>' +
+        '<div id="snnParkMsg" style="font-size:12px;margin-top:6px;min-height:1em"></div>';
+    }
+    h += '<div style="display:flex;justify-content:space-between;margin-top:22px">' +
+      (seen.length ? btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') : '<span></span>') + parkedLink() + '</div>';
+    body.innerHTML = h;
+  }
+  function parkedLink() {
+    var n = tickets.filter(isParked).length;
+    return n ? btn('tab-parked', n + ' parked until later \u2192', 'border:none;background:none;color:#64748b;padding:4px 0') : '';
+  }
+  function renderParked() {
+    document.getElementById('snnSub').textContent = '';
+    var list = tickets.filter(isParked).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+    var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 12px') +
+      '<div style="font-size:16px;font-weight:600;margin-bottom:4px">Parked</div>' +
+      '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Each one comes back ' + PARK_LEAD + ' days before its due date. Bring back clears the due date.</div>';
+    if (!list.length) h += '<div style="color:#64748b">Nothing parked.</div>';
+    list.forEach(function (t) {
+      var back = new Date(Date.parse(t.due.replace(' ', 'T') + 'Z') - PARK_LEAD * 864e5);
+      h += '<div style="padding:9px 0;border-top:1px solid #2a2a3e">' +
+        '<div style="display:flex;gap:8px;align-items:baseline"><a href="' + esc(BASE + '/' + t.table + '.do?sys_id=' + t.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;font-size:12px;color:#60a5fa;text-decoration:none">' + esc(t.number) + '</a>' +
+        '<span style="margin-left:auto;font-size:12px;color:#94a3b8;white-space:nowrap">due ' + esc(shortDate(t.due)) + ' \u00b7 back ' + (back.getMonth() + 1) + '/' + back.getDate() + '</span></div>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:3px"><span style="flex:1;font-size:13px">' + esc(t.sd) + '</span>' +
+        btn('unpark', 'Bring back', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:4px 9px;font-size:12px', t.id) + '</div></div>';
+    });
     body.innerHTML = h;
   }
 
@@ -378,6 +427,23 @@
   }
   function fallback(text) { var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
 
+  function parkMsg(t, bad) { var m = document.getElementById('snnParkMsg'); if (m) { m.textContent = t; m.style.color = bad ? '#f87171' : '#34d399'; } }
+  function park(id, ymd) {
+    var t = byId(id); if (!t) return;
+    if (daysUntil(ymd + ' 17:00:00') <= PARK_LEAD) { parkMsg('Pick a date more than ' + PARK_LEAD + ' days out, or it stays on your list.', true); return; }
+    parkMsg('Setting due date\u2026');
+    setDue(t, ymd).then(function () {
+      t.due = ymd + ' 17:00:00'; S.parked = S.parked || {}; S.parked[id] = ymd; save(); render();
+    }).catch(function (e) { parkMsg('Couldn\u2019t set the due date (' + e.message + '). Nothing changed.', true); });
+  }
+  function unpark(id, el) {
+    var t = byId(id); if (!t) return;
+    el.textContent = 'Clearing\u2026';
+    setDue(t, '').then(function () {
+      t.due = ''; if (S.parked) delete S.parked[id]; save(); render();
+    }).catch(function (e) { el.textContent = 'Failed (' + e.message + ')'; });
+  }
+
   /* ---------------- events ---------------- */
   ov.addEventListener('click', function (e) {
     var tb = e.target.closest('[data-tab]'); if (tb) { setTab(tb.getAttribute('data-tab')); return; }
@@ -394,6 +460,12 @@
       case 'back': seen.pop(); save(); render(); break;
       case 'skip': S.skip[id] = TODAY; save(); render(); break;
       case 'quick': if (S.quick[id]) delete S.quick[id]; else S.quick[id] = TODAY; save(); render(); break;
+      case 'park': park(id, PARK_DATE); break;
+      case 'parkother': var po = document.getElementById('snnParkOther'); po.style.display = po.style.display === 'none' ? 'inline-flex' : 'none'; break;
+      case 'parkgo': var dv2 = document.getElementById('snnParkDate').value; if (!dv2) { parkMsg('Pick a date first.', true); break; } park(id, dv2); break;
+      case 'unpark': unpark(id, el); break;
+      case 'tab-parked': setTab('parked'); break;
+      case 'tab-next': setTab('next'); break;
       case 'restart': S.seen[TODAY] = []; save(); render(); break;
       case 'adone': S.adhoc.forEach(function (x) { if (x.id === id) x.done = TODAY; }); save(); render(); break;
       case 'adel': S.adhoc = S.adhoc.filter(function (x) { return x.id !== id; }); save(); render(); break;
