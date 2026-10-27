@@ -80,6 +80,7 @@
 
   // Diagonal-arrow icons: inward = minimize, outward = expand
   var ICON_MIN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+  var ICON_REFRESH = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>';
   var ICON_MAX = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
   /* ---------------- overlay shell ----------------
      Docks over ServiceNow's left navigator (Filter navigator + menus) when it can find it,
@@ -90,12 +91,13 @@
     'font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;box-sizing:border-box;display:flex';
   ov.innerHTML =
     '<div id="snnMain" style="display:flex;flex-direction:column;width:100%;height:100%;min-width:0">' +
-    '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
-      '<span style="font-size:15px;font-weight:700;color:#67e8f9;letter-spacing:.04em">WHAT\u2019S NEXT</span>' +
-      '<span id="snnSub" style="font-size:12px;color:#64748b"></span>' +
-      '<button data-a="tab-help" title="How to use" aria-label="How to use" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:700">?</button>' +
-      '<button data-a="collapse" id="snnCollapse" title="Minimize" aria-label="Minimize" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:5px 7px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_MIN + '</button>' +
-      '<button data-a="close" title="Close" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 9px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u2715</button>' +
+    '<div style="display:flex;align-items:center;gap:5px;padding:10px 10px 10px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
+      '<span style="font-size:14px;font-weight:700;color:#67e8f9;letter-spacing:.04em;white-space:nowrap">WHAT\u2019S NEXT</span>' +
+      '<span id="snnSub" style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0"></span>' +
+      '<button data-a="refresh" title="Refresh tickets" aria-label="Refresh tickets" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 5px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_REFRESH + '</button>' +
+      '<button data-a="tab-help" title="How to use" aria-label="How to use" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:3px 7px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:700">?</button>' +
+      '<button data-a="collapse" id="snnCollapse" title="Minimize" aria-label="Minimize" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 5px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_MIN + '</button>' +
+      '<button data-a="close" title="Close" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:3px 7px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px">\u2715</button>' +
     '</div>' +
     '<div style="display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0;flex-wrap:wrap">' +
       tabBtn('next', 'Next') + tabBtn('add', '+ Add') + tabBtn('wrap', 'Wrap up') + tabBtn('weekly', 'Weekly') +
@@ -157,8 +159,11 @@
 
   /* ---------------- data ---------------- */
   var tickets = [], loaded = false, loadErr = '', userName = '', todayNotes = [];
-  function loadAll() {
-    loaded = false; loadErr = ''; render();
+  var lastLoad = 0, loading = false;
+  // silent = refresh in the background without flashing "Reading your tickets"
+  function loadAll(silent) {
+    if (loading) return; loading = true; lastLoad = Date.now();
+    if (!silent) { loaded = false; loadErr = ''; render(); }
     var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date';
     Promise.all(TABLES.map(function (t) {
       return q(t, OPEN + '^' + ME, fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; }).catch(function () { return []; });
@@ -169,7 +174,7 @@
       });
       if (!tickets.length) return;
       var ids = tickets.map(function (t) { return t.id; });
-      var notes = q('sys_journal_field', 'element=work_notes^element_idIN' + ids.join(',') + '^ORDERBYDESCsys_created_on', 'element_id,sys_created_on', 3000)
+      var notes = q('sys_journal_field', 'elementINwork_notes,comments^element_idIN' + ids.join(',') + '^ORDERBYDESCsys_created_on', 'element_id,sys_created_on', 3000)
         .then(function (r) { var seen = {}; r.forEach(function (n) { var id = v(n.element_id); if (!seen[id]) { seen[id] = 1; var t = byId(id); if (t) t.lastNote = v(n.sys_created_on); } }); })
         .catch(function () {});
       var slas = q('task_sla', 'active=true^taskIN' + ids.join(','), 'task,has_breached,percentage,planned_end_time', 2000)
@@ -177,18 +182,33 @@
           if (!t.sla || br || pct > t.sla.pct) t.sla = { breached: br || (t.sla && t.sla.breached), pct: Math.max(pct, t.sla ? t.sla.pct : 0), due: dv(s.planned_end_time) }; }); })
         .catch(function () {});
       return Promise.all([notes, slas]);
-    }).then(function () { loaded = true; render(); })
-      .catch(function (e) { loaded = true; loadErr = 'Couldn\u2019t load your tickets (' + e.message + '). Try Refresh.'; render(); });
+    }).then(function () { loading = false; loaded = true; loadErr = ''; var sb = document.getElementById('snnSub'); if (sb && /^Refresh/.test(sb.textContent)) sb.textContent = ''; if (!silent || tab === 'next' || tab === 'parked') keepTyping(render); })
+      .catch(function (e) { loading = false; if (silent) return; loaded = true; loadErr = 'Couldn\u2019t load your tickets (' + e.message + '). Try Refresh.'; render(); });
   }
+  // don't wipe anything you're typing in during a background refresh
+  function keepTyping(fn) { var a = document.activeElement; if (a && ov.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return; fn(); }
+  // Auto-refresh: when you come back to this tab/window (e.g. after updating a ticket), reload quietly.
+  function maybeRefresh() { if (!document.body.contains(ov)) return; if (document.visibilityState === 'visible' && Date.now() - lastLoad > 15000) loadAll(true); }
+  document.addEventListener('visibilitychange', maybeRefresh);
+  window.addEventListener('focus', maybeRefresh);
+  var autoTimer = setInterval(function () { if (!document.body.contains(ov)) { clearInterval(autoTimer); return; } if (document.visibilityState === 'visible' && Date.now() - lastLoad > 300000) loadAll(true); }, 60000);
   function byId(id) { for (var i = 0; i < tickets.length; i++) if (tickets[i].id === id) return tickets[i]; return null; }
 
   /* ---------------- the "what's next" order (your Triage Process Guide) ---------------- */
   function noteAge(t) { return t.lastNote ? daysAgo(t.lastNote) : daysAgo(t.opened); }
+  function touchedToday(t) { return !!t.lastNote && daysAgo(t.lastNote) <= 0 && dkey(new Date(Date.parse(t.lastNote.replace(' ', 'T') + 'Z'))) === TODAY; }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+  // "last update 3 days ago" / "updated today" / "no updates yet, opened 600 days ago"
+  function updateText(t) {
+    if (t.lastNote) { var a = daysAgo(t.lastNote); return a <= 0 ? 'updated today' : 'last update ' + plural(a, 'day') + ' ago'; }
+    var o = daysAgo(t.opened); return 'no work notes or comments yet' + (o != null ? ', opened ' + plural(o, 'day') + ' ago' : '');
+  }
   function prioRank(t) { var p = parseInt(String(t.priority || '').replace(/\D/g, ''), 10); return isNaN(p) ? 9 : p; }
   function buildQueue() {
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
-    var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t); });
+    // touched today (a work note or comment from today) = done for today
+    var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t) && !touchedToday(t); });
     // 1. Initial Action - blank Order
     live.filter(function (t) { return t.lane === ''; })
       .sort(function (a, b) { return (a.opened || '') < (b.opened || '') ? -1 : 1; })
@@ -196,10 +216,10 @@
     // 2. Update Needed - the 00-19 lane, then anything you're actively working whose last note is stale
     live.filter(function (t) { return t.lane === '0' || t.lane === '1'; })
       .sort(function (a, b) { return (noteAge(b) || 0) - (noteAge(a) || 0); })
-      .forEach(function (t) { var a = noteAge(t); push('update', t, 'In Update Needed' + (a != null ? ', last work note ' + a + ' day' + (a === 1 ? '' : 's') + ' ago' : '')); });
+      .forEach(function (t) { push('update', t, 'In Update Needed, ' + updateText(t)); });
     live.filter(function (t) { return t.lane === '2' && (noteAge(t) || 0) > STALE_DAYS; })
       .sort(function (a, b) { return (noteAge(b) || 0) - (noteAge(a) || 0); })
-      .forEach(function (t) { push('update', t, 'Last work note ' + noteAge(t) + ' days ago, status may be out of date'); });
+      .forEach(function (t) { var u = updateText(t); push('update', t, u.charAt(0).toUpperCase() + u.slice(1) + ', status may be out of date'); });
     // 3. Quick wins - ones you've tagged as 15 minutes or less
     live.filter(function (t) { return S.quick[t.id]; }).forEach(function (t) { push('quick', t, 'You tagged this as a quick win'); });
     // 4. Ad-hoc items (Nashoba, ED build, anything outside SN)
@@ -249,6 +269,8 @@
       var hk = Object.keys(hidden);
       if (hk.length) h += '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Not in the walk: ' + hk.map(function (k) { return hidden[k] + ' ' + k; }).join(' \u00b7 ') + '</div>';
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('restart', 'Start over') + btn('tab-wrap', 'Wrap up the day', GO) + '</div>';
+      var tt = tickets.filter(touchedToday).length;
+      if (tt) h += '<div style="font-size:12px;color:#34d399;margin:-8px 0 16px">' + plural(tt, 'ticket') + ' updated today.</div>';
       h += '<div style="margin-top:18px">' + parkedLink() + '</div>';
       body.innerHTML = h; return;
     }
@@ -269,9 +291,10 @@
     if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) + '</div>';
     h += '</div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
-    if (isTicket) h += btn('open', 'Open ticket', PRI, it.id);
+    if (isTicket) h += btn('open', 'Open ticket', PRI, it.id) + btn('find', 'Find', null, it.id);
     else h += btn('adone', '\u2713 Done', GO, it.id);
     h += btn('next', 'Next \u2192', null, it.id) + '</div>';
+    if (isTicket) h += '<div id="snnFindMsg" style="font-size:12px;margin:-4px 0 8px;min-height:0"></div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('skip', 'Skip for today', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id);
     if (isTicket) h += btn('quick', S.quick[it.id] ? '\u2605 Quick win (untag)' : '\u2606 Quick win', 'border:1px solid #2a2a3e;background:none;color:' + (S.quick[it.id] ? '#fb923c' : '#94a3b8'), it.id);
     h += '</div>';
@@ -474,6 +497,38 @@
     }).catch(function (e) { el.textContent = 'Failed (' + e.message + ')'; });
   }
 
+  /* Find on page: scroll to this ticket in the ServiceNow list you have open and highlight its row */
+  function findOnPage(id) {
+    var t = byId(id); if (!t) return;
+    var docs = [document];
+    (function addFrames(d, depth) {
+      if (depth > 2) return;
+      Array.prototype.forEach.call(d.querySelectorAll('iframe'), function (f) {
+        try { if (f.contentDocument) { docs.push(f.contentDocument); addFrames(f.contentDocument, depth + 1); } } catch (e) {}
+      });
+    })(document, 0);
+    var hit = null;
+    docs.some(function (d) {
+      if (!d.body) return false;
+      var w = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT, null), n;
+      while ((n = w.nextNode())) {
+        var el = n.parentElement;
+        if (!el || ov.contains(el) || n.nodeValue.indexOf(t.number) < 0) continue;
+        if (!el.offsetParent && el.getClientRects().length === 0) continue;
+        hit = el.closest('tr, li, [role="row"]') || el; return true;
+      }
+      return false;
+    });
+    var msg = document.getElementById('snnFindMsg');
+    if (!hit) { if (msg) { msg.textContent = t.number + ' isn\u2019t in the list on screen. Try your ticket list view, or use Open ticket.'; msg.style.color = '#fbbf24'; } return; }
+    hit.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    var old = { o: hit.style.outline, b: hit.style.backgroundColor, t: hit.style.transition };
+    hit.style.transition = 'background-color .4s';
+    hit.style.outline = '3px solid #67e8f9'; hit.style.backgroundColor = 'rgba(103,232,249,.28)';
+    setTimeout(function () { hit.style.outline = old.o; hit.style.backgroundColor = old.b; setTimeout(function () { hit.style.transition = old.t; }, 450); }, 3500);
+    if (msg) { msg.textContent = 'Found ' + t.number + ', highlighted in the list.'; msg.style.color = '#34d399'; }
+  }
+
   /* ---------------- events ---------------- */
   ov.addEventListener('click', function (e) {
     var tb = e.target.closest('[data-tab]'); if (tb) { setTab(tb.getAttribute('data-tab')); return; }
@@ -481,10 +536,10 @@
     var a = el.getAttribute('data-a'), id = el.getAttribute('data-id');
     var seen = S.seen[TODAY];
     switch (a) {
-      case 'close': ov.remove(); clearInterval(placeTimer); break;
+      case 'close': ov.remove(); clearInterval(placeTimer); clearInterval(autoTimer); break;
       case 'collapse': S.collapsed = true; save(); place(); break;
       case 'expand': S.collapsed = false; save(); place(); break;
-      case 'refresh': loadAll(); break;
+      case 'refresh': if (!loaded) { loadAll(); break; } document.getElementById('snnSub').textContent = 'Refreshing\u2026'; loadAll(true); break;
       case 'open': var t = byId(id); if (t) window.open(BASE + '/' + t.table + '.do?sys_id=' + t.id, '_blank'); break;
       case 'next': if (seen.indexOf(id) < 0) seen.push(id); save(); render(); break;
       case 'back': seen.pop(); save(); render(); break;
@@ -496,6 +551,7 @@
       case 'unpark': unpark(id, el); break;
       case 'tab-parked': setTab('parked'); break;
       case 'tab-next': setTab('next'); break;
+      case 'find': findOnPage(id); break;
       case 'tab-help': setTab(tab === 'help' ? 'next' : 'help'); break;
       case 'restart': S.seen[TODAY] = []; save(); render(); break;
       case 'adone': S.adhoc.forEach(function (x) { if (x.id === id) x.done = TODAY; }); save(); render(); break;
