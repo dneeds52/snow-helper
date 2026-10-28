@@ -685,33 +685,132 @@
 
   /* Weekly update for one project label, Monday through today */
   function weekStart() { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dkey(d); }
-  var weeklyLabel = null;
-  function renderWeekly() {
-    document.getElementById('snnSub').textContent = '';
-    var labels = S.labels.slice();
-    if (!labels.length) { body.innerHTML = '<div style="color:#94a3b8;line-height:1.6">Add an item with a project label (like Nashoba) on the <b>+ Add</b> tab, and its weekly update will build here.</div>'; return; }
-    if (!weeklyLabel || labels.indexOf(weeklyLabel) < 0) weeklyLabel = labels.indexOf('Nashoba') >= 0 ? 'Nashoba' : labels[0];
-    var ws = weekStart(), L = weeklyLabel.toLowerCase();
-    var mine = S.adhoc.filter(function (a) { return (a.label || '').toLowerCase() === L; });
-    var done = mine.filter(function (a) { return a.done && a.done >= ws; });
-    var open = mine.filter(function (a) { return !a.done; });
-    var notes = Object.keys(S.logs).filter(function (k) { return k >= ws; }).sort()
-      .map(function (k) { return S.logs[k].note || ''; })
-      .filter(function (n) { return n && n.toLowerCase().indexOf(L) >= 0; });
+  /* ---------------- Weekly ----------------
+     Project update: this week's project tickets from ServiceNow (short description mentions the project)
+     plus your items with that label. Time list: everything you logged time on this week, for Friday. */
+  var PROJECT_ALIASES = { nashoba: ['nashoba', 'noshoba', 'nv', 'nashoba valley'] };
+  function canonLabel(l) {
+    var x = String(l || '').trim().toLowerCase();
+    for (var k in PROJECT_ALIASES) if (PROJECT_ALIASES[k].indexOf(x) >= 0) return k.charAt(0).toUpperCase() + k.slice(1);
+    return String(l || '').trim();
+  }
+  function projectWords(label) { var k = canonLabel(label).toLowerCase(); return PROJECT_ALIASES[k] || [k]; }
+  function mentions(text, label) {
+    var t = String(text || '').toLowerCase();
+    return projectWords(label).some(function (w) { return new RegExp('(^|[^a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z0-9]|$)').test(t); });
+  }
+  var weeklyLabel = null, weekData = null; // weekData cached per open of the tab
+  function weekStartUTC() { var d = new Date(weekStart() + 'T00:00:00'); return new Date(d - 864e5 / 6).toISOString().slice(0, 19).replace('T', ' '); }
+  function fetchWeek() {
+    var me = myFullName(), ws = weekStart();
+    return q('task', ME + '^sys_updated_on>=' + weekStartUTC(), 'sys_id,number,short_description,state,closed_at,work_notes,comments', 500).then(function (r) {
+      return { me: me, rows: r.map(function (x) {
+        var entries = parseJournal(String(dv(x.work_notes) || ''), 'Work note').concat(parseJournal(String(dv(x.comments) || ''), 'Comment'))
+          .filter(function (e) { return dkey(e.when) >= ws && (!me || e.author.toLowerCase() === me.toLowerCase()); })
+          .sort(function (a, b) { return a.when - b.when; });
+        var ca = v(x.closed_at), closedWeek = ca && dkey(new Date(Date.parse(ca.replace(' ', 'T') + 'Z'))) >= ws && /closed|resolved|complete|cancel/i.test(String(dv(x.state) || ''));
+        return { id: v(x.sys_id), number: dv(x.number), sd: dv(x.short_description), state: dv(x.state), closed: !!closedWeek, entries: entries };
+      }) };
+    }).catch(function (e) { return { me: me, rows: [], err: e.message || 'error' }; });
+  }
+  function weekLabels() {
+    var seenL = {}, out = [];
+    S.labels.concat(S.adhoc.map(function (a) { return a.label; })).forEach(function (l) { var c = canonLabel(l); if (c && !seenL[c.toLowerCase()]) { seenL[c.toLowerCase()] = 1; out.push(c); } });
+    return out;
+  }
+  function buildWeekly(label) {
+    var ws = weekStart(), L = canonLabel(label).toLowerCase();
+    var mine = S.adhoc.filter(function (a) { return canonLabel(a.label).toLowerCase() === L; });
+    var rows = ((weekData && weekData.rows) || []).filter(function (r) { return mentions(r.sd, label) || mentions(r.number, label); });
+    var laneName = function (a) { return (ITEM_LANES.filter(function (l) { return l[0] === itemLane(a); })[0] || ['', ''])[1]; };
+    var dayName = function (ymd) { return new Date(ymd + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' }); };
     var wsd = new Date(ws + 'T12:00:00');
-    var out = [weeklyLabel + ' \u2014 week of ' + (wsd.getMonth() + 1) + '/' + wsd.getDate(), '', 'Done this week:'];
-    out.push.apply(out, done.length ? done.map(function (a) { return '- ' + a.title; }) : ['- ']);
-    out.push('', 'In progress / still open:');
-    out.push.apply(out, open.length ? open.map(function (a) { return '- ' + a.title; }) : ['- ']);
+    var out = [canonLabel(label) + ' \u2014 week of ' + (wsd.getMonth() + 1) + '/' + wsd.getDate(), ''];
+    var done = rows.filter(function (r) { return r.closed; }).map(function (r) { return r.number + ' ' + r.sd; })
+      .concat(mine.filter(function (a) { return a.done && a.done >= ws; }).map(function (a) { return a.title; }));
+    out.push('Done this week:'); out.push.apply(out, done.length ? done.map(function (x) { return '- ' + x; }) : ['- ']);
+    var moving = rows.filter(function (r) { return !r.closed && r.entries.length; }).map(function (r) {
+      var last = r.entries[r.entries.length - 1].text; return r.number + ' ' + r.sd + (last ? ': ' + (last.length > 140 ? last.slice(0, 137) + '...' : last) : '');
+    }).concat(mine.filter(function (a) { return !a.done && itemLane(a) !== 'waiting'; }).map(function (a) {
+      return a.title + ' (' + laneName(a) + (a.touched && a.touched >= ws ? ', updated ' + dayName(a.touched) : '') + ')';
+    }));
+    out.push('', 'In progress:'); out.push.apply(out, moving.length ? moving.map(function (x) { return '- ' + x; }) : ['- ']);
+    var notes = Object.keys(S.logs).filter(function (k) { return k >= ws; }).sort()
+      .map(function (k) { return S.logs[k].note || ''; }).filter(function (n) { return n && mentions(n, label); });
     if (notes.length) { out.push('', 'Notes from the week:'); notes.forEach(function (n) { out.push('- ' + n); }); }
-    out.push('', 'Blockers:', '- ', '', 'Next week:', '- ');
-    var h = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' + labels.map(function (l) {
-      var on = l === weeklyLabel; return '<button data-a="wlabel" data-id="' + esc(l) + '" style="padding:5px 11px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#67e8f9' : '#2a2a3e') + ';background:' + (on ? '#67e8f9' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + esc(l) + '</button>';
-    }).join('') + '</div>';
-    h += '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px">Built from this week\u2019s ' + esc(weeklyLabel) + ' items and any wrap-up notes that mention it. Fill in blockers and next week, then copy.</div>';
-    h += '<textarea id="snnWeek" style="' + inp() + 'min-height:300px;resize:vertical;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;margin-bottom:10px">' + esc(out.join('\n')) + '</textarea>';
-    h += '<div style="display:flex;gap:8px;align-items:center">' + btn('copyweek', 'Copy for OneNote', GO) + '<span id="snnCopied" style="font-size:12px;color:#34d399;display:none">Copied</span></div>';
-    body.innerHTML = h;
+    var blockers = mine.filter(function (a) { return !a.done && itemLane(a) === 'waiting'; }).map(function (a) { return a.title; });
+    out.push('', 'Blockers:'); out.push.apply(out, blockers.length ? blockers.map(function (x) { return '- ' + x; }) : ['- ']);
+    out.push('', 'Next week:', '- ');
+    return out.join('\n');
+  }
+  // every id you logged time on this week, summed, with a readable name
+  function nameFor(id) {
+    var t = byId(id); if (t) return t.number + ' ' + t.sd;
+    var a = itemById(id); if (a) return (a.label ? canonLabel(a.label) + ': ' : '') + a.title;
+    var r = ((weekData && weekData.rows) || []).filter(function (x) { return x.id === id; })[0]; if (r) return r.number + ' ' + r.sd;
+    return (S.names && S.names[id]) || 'Ticket ' + String(id).slice(0, 8);
+  }
+  function buildTimeList() {
+    var ws = weekStart(), tot = {}, sum = 0;
+    Object.keys(S.time || {}).filter(function (k) { return k >= ws; }).forEach(function (k) {
+      Object.keys(S.time[k]).forEach(function (id) { tot[id] = (tot[id] || 0) + S.time[k][id]; sum += S.time[k][id]; });
+    });
+    var ids = Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a]; });
+    if (!ids.length) return '';
+    var lines = ids.map(function (id) { var n = nameFor(id); if (n.length > 48) n = n.slice(0, 47) + '\u2026'; return n + '  ' + hrs(tot[id]); });
+    var w = Math.max.apply(null, lines.map(function (l) { return l.length; }));
+    lines = ids.map(function (id, i) { var n = nameFor(id); if (n.length > 48) n = n.slice(0, 47) + '\u2026'; var h = hrs(tot[id]); return n + new Array(Math.max(2, w - n.length - h.length + 1)).join(' ') + ' ' + h; });
+    var t = 'Total'; lines.push(t + new Array(Math.max(2, w - t.length - hrs(sum).length + 1)).join(' ') + ' ' + hrs(sum));
+    var wsd = new Date(ws + 'T12:00:00');
+    return 'Time, week of ' + (wsd.getMonth() + 1) + '/' + wsd.getDate() + '\n\n' + lines.join('\n');
+  }
+  function timeRows() {
+    var ws = weekStart(), tot = {}, sum = 0;
+    Object.keys(S.time || {}).filter(function (k) { return k >= ws; }).forEach(function (k) { Object.keys(S.time[k]).forEach(function (id) { tot[id] = (tot[id] || 0) + S.time[k][id]; sum += S.time[k][id]; }); });
+    return Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a]; }).map(function (id) { return [nameFor(id), hrs(tot[id])]; }).concat([['Total', hrs(sum)]]);
+  }
+  function weekKey(label) { return weekStart() + '|' + canonLabel(label).toLowerCase(); }
+  function renderWeekly(useCache) {
+    document.getElementById('snnSub').textContent = '';
+    if (!useCache || !weekData) {
+      body.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 0">Pulling this week\u2019s activity\u2026</div>';
+      fetchWeek().then(function (d) { weekData = d; if (tab === 'weekly') renderWeekly(true); });
+      return;
+    }
+    var labels = weekLabels(), h = '';
+    S.weekly = S.weekly || {};
+    if (!labels.length) h += '<div style="color:#94a3b8;line-height:1.6;margin-bottom:12px">Add an item with a project label (like Nashoba) on the <b>+ Add</b> tab, and its weekly update will build here.</div>';
+    else {
+      if (!weeklyLabel || labels.indexOf(canonLabel(weeklyLabel)) < 0) weeklyLabel = labels.indexOf('Nashoba') >= 0 ? 'Nashoba' : labels[0];
+      var saved = S.weekly[weekKey(weeklyLabel)];
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + labels.map(function (l) {
+        var on = l === weeklyLabel; return '<button data-a="wlabel" data-id="' + esc(l) + '" style="padding:5px 11px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#67e8f9' : '#2a2a3e') + ';background:' + (on ? '#67e8f9' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + esc(l) + '</button>';
+      }).join('') + '</div>';
+      h += '<div style="display:flex;align-items:baseline;margin-bottom:6px"><span style="font-size:12px;color:#94a3b8">' + esc(weeklyLabel) + ' tickets and items this week. Edit freely, then copy.</span>' +
+        '<button data-a="rebuildweek" id="snnRebuildWeek" style="margin-left:auto;background:none;border:none;color:#64748b;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;display:' + (saved && saved.edited ? 'inline' : 'none') + '">Rebuild</button></div>';
+      h += '<textarea id="snnWeek" style="' + inp() + 'min-height:280px;resize:vertical;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;margin-bottom:10px"></textarea>';
+      h += '<div style="display:flex;gap:8px;align-items:center">' + btn('copyweek', 'Copy for OneNote', GO) + '<span id="snnCopied" style="font-size:12px;color:#34d399;display:none">Copied</span></div>';
+      if (weekData.err) h += '<div style="font-size:12px;color:#f87171;margin-top:8px">Couldn\u2019t read this week\u2019s tickets (' + esc(weekData.err) + '). Your items are still included.</div>';
+    }
+    var tl = buildTimeList();
+    h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:22px 0 6px;padding-top:14px;border-top:1px solid #2a2a3e">TIME THIS WEEK</div>';
+    if (!tl) h += '<div style="font-size:12px;color:#64748b">No time logged yet. Use the time buttons on Wrap up each day.</div>';
+    else {
+      h += '<div style="font-size:13px;margin-bottom:10px">' + timeRows().map(function (r, i, all) {
+        var last = i === all.length - 1;
+        return '<div style="display:flex;gap:10px;padding:5px 0;' + (last ? 'border-top:1px solid #2a2a3e;font-weight:600' : '') + '"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(r[0]) + '">' + esc(r[0]) + '</span><span style="font-family:Consolas,monospace;color:#67e8f9">' + r[1] + '</span></div>';
+      }).join('') + '</div>' +
+      '<textarea id="snnTime" readonly style="display:none">' + esc(tl) + '</textarea>' +
+      '<div style="display:flex;gap:8px;align-items:center">' + btn('copytime', 'Copy time list', null) + '<span id="snnCopiedTime" style="font-size:12px;color:#34d399;display:none">Copied</span></div>';
+    }
+    var keep = body.scrollTop; body.innerHTML = h; body.scrollTop = keep;
+    var wk = document.getElementById('snnWeek');
+    if (wk) {
+      var sv = S.weekly[weekKey(weeklyLabel)];
+      wk.value = sv && sv.edited ? sv.text : buildWeekly(weeklyLabel);
+      // your edits are kept for this project and week until you click Rebuild
+      wk.addEventListener('input', function () { S.weekly[weekKey(weeklyLabel)] = { text: wk.value, edited: true }; save(); document.getElementById('snnRebuildWeek').style.display = 'inline'; });
+    }
   }
 
   function copy(text) {
@@ -796,7 +895,7 @@
       case 'close': ov.remove(); clearInterval(placeTimer); clearInterval(autoTimer); break;
       case 'collapse': S.collapsed = true; save(); place(); break;
       case 'expand': S.collapsed = false; save(); place(); break;
-      case 'refresh': if (tab === 'wrap') { wrapData = null; renderWrap(); break; } if (!loaded) { loadAll(); break; } document.getElementById('snnSub').textContent = 'Refreshing\u2026'; loadAll(true); break;
+      case 'refresh': if (tab === 'wrap') { wrapData = null; renderWrap(); break; } if (tab === 'weekly') { weekData = null; renderWeekly(); break; } if (!loaded) { loadAll(); break; } document.getElementById('snnSub').textContent = 'Refreshing\u2026'; loadAll(true); break;
       case 'open': var t = byId(id); if (t) window.open(BASE + '/' + t.table + '.do?sys_id=' + t.id, '_blank'); break;
       case 'next': if (seen.indexOf(id) < 0) seen.push(id); save(); render(); break;
       case 'back': seen.pop(); save(); render(); break;
@@ -825,10 +924,12 @@
       case 'addsave': addItem(); break;
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
-      case 'settime': var dt = dayTime(), hh = parseFloat(el.getAttribute('data-h')); if (dt[id] === hh) delete dt[id]; else dt[id] = hh; save(); renderWrap(true); break;
+      case 'settime': S.names = S.names || {}; var wr = ((wrapData && wrapData.rows) || []).filter(function (x) { return x.id === id; })[0]; if (wr) S.names[id] = wr.number + ' ' + wr.sd; var dt = dayTime(), hh = parseFloat(el.getAttribute('data-h')); if (dt[id] === hh) delete dt[id]; else dt[id] = hh; save(); renderWrap(true); break;
       case 'rebuildsum': var lt = logToday(); lt.edited = false; delete lt.summary; save(); renderWrap(true); break;
       case 'copyweek': copy(document.getElementById('snnWeek').value); break;
-      case 'wlabel': weeklyLabel = id; render(); break;
+      case 'wlabel': weeklyLabel = id; renderWeekly(true); break;
+      case 'rebuildweek': if (S.weekly) delete S.weekly[weekKey(weeklyLabel)]; save(); renderWeekly(true); break;
+      case 'copytime': (function () { var m = document.getElementById('snnCopiedTime'); var t = document.getElementById('snnTime').value; var ok = function () { m.style.display = 'inline'; setTimeout(function () { m.style.display = 'none'; }, 1600); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, function () { fallback(t); ok(); }); else { fallback(t); ok(); } })(); break;
     }
   });
 
