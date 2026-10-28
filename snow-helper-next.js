@@ -78,6 +78,8 @@
   function daysUntil(iso) { if (!iso) return null; var t = Date.parse(iso.replace(' ', 'T') + 'Z'); return isNaN(t) ? null : Math.ceil((t - Date.now()) / 86400000); }
   function shortDate(iso) { if (!iso) return ''; var d = new Date(Date.parse(iso.replace(' ', 'T') + 'Z')); return (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2); }
   function isParked(t) { var d = daysUntil(t.due); return d != null && d > PARK_LEAD; }
+  // tickets: a far-off due date only parks it once it has an Order and an owner (new tickets always show)
+  function parkedNow(t) { return isParked(t) && (isItem(t) || (S.parked && S.parked[t.id]) || (t.lane !== '' && !t.unassigned)); }
   function q(table, query, fields, limit) {
     return api('/api/now/table/' + table + '?sysparm_query=' + encodeURIComponent(query) + '&sysparm_fields=' + fields +
       '&sysparm_display_value=all&sysparm_exclude_reference_link=true&sysparm_limit=' + (limit || 500));
@@ -186,8 +188,15 @@
       });
       if (!tickets.length) return;
       var ids = tickets.map(function (t) { return t.id; });
-      var notes = q('sys_journal_field', 'elementINwork_notes,comments^element_idIN' + ids.join(',') + '^ORDERBYDESCsys_created_on', 'element_id,sys_created_on', 3000)
-        .then(function (r) { var seen = {}; r.forEach(function (n) { var id = v(n.element_id); if (!seen[id]) { seen[id] = 1; var t = byId(id); if (t) { t.lastNote = v(n.sys_created_on); t.noteSrc = 'notes table'; } } }); })
+      var meU = myUserName();
+      var notes = q('sys_journal_field', 'elementINwork_notes,comments^element_idIN' + ids.join(',') + '^ORDERBYDESCsys_created_on', 'element_id,sys_created_on,sys_created_by', 3000)
+        .then(function (r) {
+          r.forEach(function (n) {
+            var t = byId(v(n.element_id)); if (!t) return;
+            if (!t.lastNote) { t.lastNote = v(n.sys_created_on); t.noteSrc = 'notes table'; }
+            if (!t.myLast && meU && String(v(n.sys_created_by)).toLowerCase() === meU.toLowerCase()) t.myLast = v(n.sys_created_on);
+          });
+        })
         .catch(function () {})
         .then(fromTicketText);
       var slas = q('task_sla', 'active=true^taskIN' + ids.join(','), 'task,has_breached,percentage,planned_end_time', 2000)
@@ -209,13 +218,20 @@
      read the ticket's own Work notes + Additional comments text and take the newest timestamp. */
   function fromTicketText() {
     var byTable = {};
-    tickets.forEach(function (t) { if (!t.lastNote) (byTable[t.table] = byTable[t.table] || []).push(t.id); });
+    var me = myFullName(), meU = myUserName();
+    // read the ticket text when the notes table gave nothing, or when it couldn't tell which notes are yours
+    tickets.forEach(function (t) { if (!t.lastNote || (!meU && me)) (byTable[t.table] = byTable[t.table] || []).push(t.id); });
     return Promise.all(Object.keys(byTable).map(function (tb) {
       return q(tb, 'sys_idIN' + byTable[tb].join(','), 'sys_id,work_notes,comments', 500).then(function (r) {
         r.forEach(function (x) {
           var t = byId(v(x.sys_id)); if (!t) return;
-          var best = newestStamp(String(dv(x.work_notes) || '') + '\n' + String(dv(x.comments) || ''));
-          if (best) { t.lastNote = best; t.noteSrc = 'ticket text'; }
+          var text = String(dv(x.work_notes) || '') + '\n' + String(dv(x.comments) || '');
+          var best = newestStamp(text);
+          if (best && !t.lastNote) { t.lastNote = best; t.noteSrc = 'ticket text'; }
+          if (me && !t.myLast) {
+            var mine = parseJournal(text, '').filter(function (e) { return e.author.toLowerCase() === me.toLowerCase(); }).sort(function (a, b) { return b.when - a.when; })[0];
+            if (mine) t.myLast = mine.when.toISOString().slice(0, 19).replace('T', ' ');
+          }
         });
       }).catch(function () {});
     }));
@@ -236,7 +252,13 @@
 
   /* ---------------- the "what's next" order (your Triage Process Guide) ---------------- */
   function noteAge(t) { return t.lastNote ? daysAgo(t.lastNote) : daysAgo(t.opened); }
-  function touchedToday(t) { return !!t.lastNote && daysAgo(t.lastNote) <= 0 && dkey(new Date(Date.parse(t.lastNote.replace(' ', 'T') + 'Z'))) === TODAY; }
+  // "updated today" = YOU wrote a work note or comment today (not the requester, not an automatic note)
+  function touchedToday(t) { return !!t.myLast && dkey(new Date(Date.parse(t.myLast.replace(' ', 'T') + 'Z'))) === TODAY; }
+  function myUserName() {
+    var u = null; try { u = window.g_user; } catch (e) {}
+    for (var i = 0; !u && i < frames.length; i++) { try { u = frames[i].g_user; } catch (e) {} }
+    return (u && (u.userName || u.user_name)) || '';
+  }
   function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
   // "last update 3 days ago" / "updated today" / "no updates yet, opened 600 days ago"
   function updateText(t) {
@@ -258,7 +280,7 @@
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
     // touched today (a work note or comment from today) stays in its bucket but counts as done
-    var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t); });
+    var live = tickets.filter(function (t) { return !S.skip[t.id] && !parkedNow(t); });
     // your items that are in the walk today (done-today ones stay so counts don't jump)
     var items = S.adhoc.filter(function (a) { return (!a.done || a.done === TODAY) && S.skip[a.id] !== TODAY && !isParked(a); });
     function itemsIn(l) { return items.filter(function (a) { return itemLane(a) === l; }); }
@@ -447,7 +469,7 @@
     body.innerHTML = h;
   }
   function parkedLink() {
-    var n = tickets.filter(isParked).length + S.adhoc.filter(function (a) { return !a.done && isParked(a); }).length;
+    var n = tickets.filter(parkedNow).length + S.adhoc.filter(function (a) { return !a.done && isParked(a); }).length;
     return n ? btn('tab-parked', n + ' parked until later \u2192', 'border:none;background:none;color:#64748b;padding:4px 0') : '';
   }
   function renderHelp() {
@@ -479,7 +501,7 @@
   }
   function renderParked() {
     document.getElementById('snnSub').textContent = '';
-    var list = tickets.filter(isParked).concat(S.adhoc.filter(function (a) { return !a.done && isParked(a); })).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+    var list = tickets.filter(parkedNow).concat(S.adhoc.filter(function (a) { return !a.done && isParked(a); })).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
     var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 12px') +
       '<div style="font-size:16px;font-weight:600;margin-bottom:4px">Parked</div>' +
       '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Each one comes back ' + PARK_LEAD + ' days before its due date. Bring back clears the due date.</div>';
