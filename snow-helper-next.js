@@ -21,7 +21,7 @@
   var KEY = 'snNext_v1';
   var LANES = { '': 'Initial Action', '0': 'Update Needed', '1': 'Update Needed', '2': 'Prioritize', '3': 'Discuss',
                 '4': 'Scheduled', '5': 'Blocked', '6': 'Deferred', '7': 'DC Move', '8': 'ASAP PC' };
-  var STEP_COLOR = { initial: '#a78bfa', update: '#fbbf24', quick: '#fb923c', adhoc: '#67e8f9', prioritize: '#60a5fa' };
+  var STEP_COLOR = { top: '#f87171', initial: '#a78bfa', update: '#fbbf24', quick: '#fb923c', adhoc: '#67e8f9', prioritize: '#60a5fa' };
 
   var MOCK = window.SNNEXT_MOCK || null; // preview/testing only
   var tok = MOCK ? 'mock' : window.g_ck;
@@ -107,6 +107,7 @@
     '<div style="display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0;flex-wrap:wrap">' +
       tabBtn('next', 'Next') + tabBtn('add', '+ Add') + tabBtn('wrap', 'Wrap up') + tabBtn('weekly', 'Weekly') +
     '</div>' +
+    '<div id="snnUndo" style="display:none;align-items:center;gap:8px;padding:8px 14px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;font-size:13px;flex-shrink:0"><span id="snnUndoMsg" style="flex:1;min-width:0"></span><button data-a="undo" style="background:none;border:1px solid #67e8f9;color:#67e8f9;border-radius:6px;padding:3px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer">Undo</button></div>' +
     '<div id="snnBody" style="flex:1;overflow-y:auto;padding:16px 14px"></div>' +
     '</div>' +
     '<div id="snnStrip" data-a="expand" title="Open What\u2019s Next" style="display:none;width:100%;height:100%;cursor:pointer;align-items:center;justify-content:center;box-sizing:border-box;white-space:nowrap">' +
@@ -236,41 +237,66 @@
     if (t.lastNote) { var a = daysAgo(t.lastNote); return a <= 0 ? 'updated today' : 'last update ' + plural(a, 'day') + ' ago'; }
     var o = daysAgo(t.opened); return 'no work notes or comments yet' + (o != null ? ', opened ' + plural(o, 'day') + ' ago' : '');
   }
+  /* Your items (project work, not in ServiceNow) get a bucket just like tickets */
+  var ITEM_LANES = [['initial', 'Initial Action'], ['update', 'Update Needed'], ['prioritize', 'Prioritize'], ['waiting', 'Waiting / blocked'], ['deferred', 'Deferred']];
+  function isItem(x) { return !!x && !x.number; }
+  function itemLane(a) { return a.lane || 'initial'; }
+  function laneOptions(sel) { return ITEM_LANES.map(function (l) { return '<option value="' + l[0] + '"' + (l[0] === sel ? ' selected' : '') + '>' + l[1] + '</option>'; }).join(''); }
+  function itemAge(a) { return daysAgo((a.touched || a.added) + ' 12:00:00') || 0; }
+  function itemWhy(a) {
+    var who = a.label ? a.label + ' item' : 'Your item', age = daysAgo(a.added + ' 12:00:00') || 0;
+    return who + ', added ' + (age ? plural(age, 'day') + ' ago' : 'today');
+  }
   function prioRank(t) { var p = parseInt(String(t.priority || '').replace(/\D/g, ''), 10); return isNaN(p) ? 9 : p; }
   function buildQueue() {
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
     // touched today (a work note or comment from today) stays in its bucket but counts as done
     var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t); });
-    // 1. Initial Action - blank Order
-    live.filter(function (t) { return t.lane === ''; })
-      .sort(function (a, b) { return (a.opened || '') < (b.opened || '') ? -1 : 1; })
-      .forEach(function (t) { push('initial', t, 'No Order set yet, needs initial action'); });
-    // 2. Update Needed - the 00-19 lane, then anything you're actively working whose last note is stale
-    live.filter(function (t) { return t.lane === '0' || t.lane === '1'; })
-      .sort(function (a, b) { return (noteAge(b) || 0) - (noteAge(a) || 0); })
-      .forEach(function (t) { push('update', t, 'In Update Needed, ' + updateText(t)); });
+    // your items that are in the walk today (done-today ones stay so counts don't jump)
+    var items = S.adhoc.filter(function (a) { return (!a.done || a.done === TODAY) && S.skip[a.id] !== TODAY && !isParked(a); });
+    function itemsIn(l) { return items.filter(function (a) { return itemLane(a) === l; }); }
+    // merge two lists that are each already in order; "older first" decides who goes next
+    function mergeByAge(ts, tsAge, its) {
+      var out2 = [], i = 0, j = 0;
+      its = its.slice().sort(function (a, b) { return itemAge(b) - itemAge(a); });
+      while (i < ts.length || j < its.length) {
+        if (j >= its.length || (i < ts.length && tsAge(ts[i]) >= itemAge(its[j]))) out2.push(ts[i++]); else out2.push(its[j++]);
+      }
+      return out2;
+    }
+    // 0. Important - anything you pinned, in the order you pinned it
+    S.pin = S.pin || {};
+    live.concat(items).filter(function (x) { return S.pin[x.id]; }).sort(function (a, b) { return S.pin[a.id] < S.pin[b.id] ? -1 : 1; })
+      .forEach(function (x) { push('top', x, 'You marked this important'); });
+    // 1. Initial Action - blank Order (oldest first), mixed with items in Initial Action
+    var initT = live.filter(function (t) { return t.lane === ''; }).sort(function (a, b) { return (a.opened || '') < (b.opened || '') ? -1 : 1; });
+    mergeByAge(initT, function (t) { return daysAgo(t.opened) || 0; }, itemsIn('initial')).forEach(function (x) {
+      push('initial', x, isItem(x) ? itemWhy(x) : 'No Order set yet, needs initial action');
+    });
+    // 2. Update Needed - the 00-19 lane (stalest first), mixed with items; then stale Prioritize tickets
+    var updT = live.filter(function (t) { return t.lane === '0' || t.lane === '1'; }).sort(function (a, b) { return (noteAge(b) || 0) - (noteAge(a) || 0); });
+    mergeByAge(updT, function (t) { return noteAge(t) || 0; }, itemsIn('update')).forEach(function (x) {
+      push('update', x, isItem(x) ? itemWhy(x) + ', needs an update' : 'In Update Needed, ' + updateText(x));
+    });
     live.filter(function (t) { return t.lane === '2' && (noteAge(t) || 0) > STALE_DAYS; })
       .sort(function (a, b) { return (noteAge(b) || 0) - (noteAge(a) || 0); })
       .forEach(function (t) { var u = updateText(t); push('update', t, u.charAt(0).toUpperCase() + u.slice(1) + ', status may be out of date'); });
-    // 3. Quick wins - ones you've tagged as 15 minutes or less
+    // 3. Quick wins - tickets or items you've tagged as 15 minutes or less
     live.filter(function (t) { return S.quick[t.id]; }).forEach(function (t) { push('quick', t, 'You tagged this as a quick win'); });
-    // 4. Ad-hoc items (Nashoba, ED build, anything outside SN)
-    S.adhoc.filter(function (a) { return !a.done && S.skip[a.id] !== TODAY; })
-      .forEach(function (a) { push('adhoc', a, a.label ? a.label + ' item you added' : 'Item you added'); });
-    // 5. Prioritize lane - missed SLA, SLA at risk, then ones digit, then priority
-    live.filter(function (t) { return t.lane === '2'; })
-      .sort(function (a, b) {
-        function w(t) { return t.sla && t.sla.breached ? 0 : (t.sla && t.sla.pct >= SLA_AT_RISK ? 1 : 2); }
-        return (w(a) - w(b)) || ((parseInt(a.order, 10) || 0) - (parseInt(b.order, 10) || 0)) || (prioRank(a) - prioRank(b));
-      })
-      .forEach(function (t) {
-        var why = t.sla && t.sla.breached ? 'SLA missed' : (t.sla && t.sla.pct >= SLA_AT_RISK ? 'SLA ' + Math.round(t.sla.pct) + '% used' + (t.sla.due ? ', due ' + t.sla.due : '') : 'In Prioritize, order ' + t.order);
-        push('prioritize', t, why);
-      });
+    items.filter(function (a) { return S.quick[a.id] && itemLane(a) !== 'waiting' && itemLane(a) !== 'deferred'; }).forEach(function (a) { push('quick', a, 'You tagged this as a quick win'); });
+    // 4. Prioritize - missed SLA, SLA at risk first; then the rest by Order, mixed with items by age
+    function w(t) { return t.sla && t.sla.breached ? 0 : (t.sla && t.sla.pct >= SLA_AT_RISK ? 1 : 2); }
+    var prT = live.filter(function (t) { return t.lane === '2'; })
+      .sort(function (a, b) { return (w(a) - w(b)) || ((parseInt(a.order, 10) || 0) - (parseInt(b.order, 10) || 0)) || (prioRank(a) - prioRank(b)); });
+    var urgent = prT.filter(function (t) { return w(t) < 2; }), rest = prT.filter(function (t) { return w(t) === 2; });
+    urgent.concat(mergeByAge(rest, function (t) { return daysAgo(t.opened) || 0; }, itemsIn('prioritize'))).forEach(function (x) {
+      if (isItem(x)) { push('prioritize', x, itemWhy(x)); return; }
+      push('prioritize', x, x.sla && x.sla.breached ? 'SLA missed' : (x.sla && x.sla.pct >= SLA_AT_RISK ? 'SLA ' + Math.round(x.sla.pct) + '% used' + (x.sla.due ? ', due ' + x.sla.due : '') : 'In Prioritize, order ' + x.order));
+    });
     return out;
   }
-  var STEP_NAME = { initial: 'Initial Action', update: 'Update Needed', quick: 'Quick win', adhoc: 'Your items', prioritize: 'Prioritize' };
+  var STEP_NAME = { top: 'Important', initial: 'Initial Action', update: 'Update Needed', quick: 'Quick win', adhoc: 'Your items', prioritize: 'Prioritize' };
 
   /* ---------------- views ---------------- */
   function btn(a, label, style, id) { return '<button data-a="' + a + '"' + (id ? ' data-id="' + id + '"' : '') + ' style="padding:8px 12px;border-radius:7px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;' + (style || 'border:1px solid #2a2a3e;background:none;color:#e2e8f0') + '">' + label + '</button>'; }
@@ -286,11 +312,11 @@
     if (tab === 'help') return renderHelp();
   }
 
-  var ORDER = ['initial', 'update', 'quick', 'adhoc', 'prioritize'];
+  var ORDER = ['top', 'initial', 'update', 'quick', 'prioritize'];
   var lastActive = null;
   function buckets() {
     var queue = buildQueue(), seen = S.seen[TODAY] || [], B = {};
-    queue.forEach(function (x) { x.done = seen.indexOf(x.item.id) >= 0 || (x.step !== 'adhoc' && touchedToday(x.item)); });
+    queue.forEach(function (x) { x.done = seen.indexOf(x.item.id) >= 0 || (isItem(x.item) ? x.item.done === TODAY : touchedToday(x.item)); });
     ORDER.forEach(function (k) {
       var items = queue.filter(function (x) { return x.step === k; });
       var done = items.filter(function (x) { return x.done; }).length;
@@ -302,7 +328,7 @@
     var h = '<div style="margin-bottom:14px">';
     ORDER.forEach(function (k) {
       var b = B[k], col = STEP_COLOR[k];
-      if ((k === 'quick' || k === 'adhoc') && !b.total) return;
+      if ((k === 'quick' || k === 'top') && !b.total) return;
       var isActive = k === active, finished = !b.next;
       var icon = finished ? '\u2713' : (isActive ? '\u25cf' : '\u25cb');
       var count = !b.total ? 'none' : finished ? 'done' : isActive ? (k === 'prioritize' ? 'next up' : (b.done + 1) + ' of ' + b.total) : (k === 'prioritize' ? '' : String(b.total - b.done));
@@ -339,7 +365,7 @@
       body.innerHTML = h; return;
     }
     var cur = B[active].next;
-    var it = cur.item, col = STEP_COLOR[cur.step], isTicket = cur.step !== 'adhoc';
+    var it = cur.item, col = STEP_COLOR[cur.step], isTicket = !isItem(it);
     h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col + ';text-transform:uppercase;margin-bottom:8px">' +
       (cur.step === 'prioritize' ? 'Pick this up for 30 min' : STEP_NAME[cur.step]) + '</div>';
     h += '<div style="border:1px solid ' + col + '66;border-left:4px solid ' + col + ';border-radius:0;background:#1a1a2e;padding:16px;margin-bottom:14px">';
@@ -351,7 +377,7 @@
       h += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin:8px 0 10px">' + esc(it.title) + '</div>';
     }
     h += '<div style="font-size:13px;color:#cbd5e1"' + (isTicket && it.noteSrc ? ' title="Last update read from the ' + it.noteSrc + '"' : '') + '>' + esc(cur.why) + '</div>';
-    if (isTicket && S.parked && S.parked[it.id] && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
+    if (S.parked && S.parked[it.id] && it.due && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
     if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) + '</div>';
     h += '</div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
@@ -360,9 +386,12 @@
     h += btn('next', 'Next \u2192', null, it.id) + '</div>';
     if (isTicket) h += '<div id="snnFindMsg" style="font-size:12px;margin:-4px 0 8px;min-height:0"></div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('skip', 'Skip for today', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id);
-    if (isTicket) h += btn('quick', S.quick[it.id] ? '\u2605 Quick win (untag)' : '\u2606 Quick win', 'border:1px solid #2a2a3e;background:none;color:' + (S.quick[it.id] ? '#fb923c' : '#94a3b8'), it.id);
+    h += btn('pin', (S.pin && S.pin[it.id]) ? '\u2b07 Not important' : '\u2b06 Important', 'border:1px solid #2a2a3e;background:none;color:' + ((S.pin && S.pin[it.id]) ? '#f87171' : '#94a3b8'), it.id);
+    h += btn('quick', S.quick[it.id] ? '\u2605 Quick win (untag)' : '\u2606 Quick win', 'border:1px solid #2a2a3e;background:none;color:' + (S.quick[it.id] ? '#fb923c' : '#94a3b8'), it.id);
     h += '</div>';
-    if (isTicket) {
+    if (!isTicket) h += '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:#94a3b8">Move to ' +
+      '<select data-a="movelane" data-id="' + it.id + '" style="padding:5px 7px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:12px;color-scheme:dark">' + laneOptions(itemLane(it)) + '</select></div>';
+    {
       var pd = PARK_DATE.split('-');
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">' +
         btn('park', '\u23f8 Park until ' + (+pd[1]) + '/' + (+pd[2]), 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id) +
@@ -376,7 +405,7 @@
     body.innerHTML = h;
   }
   function parkedLink() {
-    var n = tickets.filter(isParked).length;
+    var n = tickets.filter(isParked).length + S.adhoc.filter(function (a) { return !a.done && isParked(a); }).length;
     return n ? btn('tab-parked', n + ' parked until later \u2192', 'border:none;background:none;color:#64748b;padding:4px 0') : '';
   }
   function renderHelp() {
@@ -408,7 +437,7 @@
   }
   function renderParked() {
     document.getElementById('snnSub').textContent = '';
-    var list = tickets.filter(isParked).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+    var list = tickets.filter(isParked).concat(S.adhoc.filter(function (a) { return !a.done && isParked(a); })).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
     var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 12px') +
       '<div style="font-size:16px;font-weight:600;margin-bottom:4px">Parked</div>' +
       '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Each one comes back ' + PARK_LEAD + ' days before its due date. Bring back clears the due date.</div>';
@@ -416,44 +445,104 @@
     list.forEach(function (t) {
       var back = new Date(Date.parse(t.due.replace(' ', 'T') + 'Z') - PARK_LEAD * 864e5);
       h += '<div style="padding:9px 0;border-top:1px solid #2a2a3e">' +
-        '<div style="display:flex;gap:8px;align-items:baseline"><a href="' + esc(BASE + '/' + t.table + '.do?sys_id=' + t.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;font-size:12px;color:#60a5fa;text-decoration:none">' + esc(t.number) + '</a>' +
+        '<div style="display:flex;gap:8px;align-items:baseline">' + (isItem(t) ? '<span style="font-size:12px;color:#67e8f9">' + esc(t.label || 'Your item') + '</span>' : '<a href="' + esc(BASE + '/' + t.table + '.do?sys_id=' + t.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;font-size:12px;color:#60a5fa;text-decoration:none">' + esc(t.number) + '</a>') +
         '<span style="margin-left:auto;font-size:12px;color:#94a3b8;white-space:nowrap">due ' + esc(shortDate(t.due)) + ' \u00b7 back ' + (back.getMonth() + 1) + '/' + back.getDate() + '</span></div>' +
-        '<div style="display:flex;gap:8px;align-items:center;margin-top:3px"><span style="flex:1;font-size:13px">' + esc(t.sd) + '</span>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:3px"><span style="flex:1;font-size:13px">' + esc(isItem(t) ? t.title : t.sd) + '</span>' +
         btn('unpark', 'Bring back', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:4px 9px;font-size:12px', t.id) + '</div></div>';
     });
     body.innerHTML = h;
   }
 
+  var editingId = null;
   function renderAdd() {
     document.getElementById('snnSub').textContent = '';
     var open = S.adhoc.filter(function (a) { return !a.done; });
-    var h = '<div style="color:#94a3b8;font-size:13px;margin-bottom:10px">Things that aren\u2019t in ServiceNow. They show up in your walk after quick wins and stay until you mark them done.</div>';
+    var doneToday = S.adhoc.filter(function (a) { return a.done === TODAY; });
+    var h = '<div style="color:#94a3b8;font-size:13px;margin-bottom:10px">Project work that isn\u2019t in ServiceNow. Pick a bucket and it shows up in your walk alongside your tickets until you mark it done.</div>';
     h += '<input id="snnTitle" placeholder="Confirm go-live testing dates" style="' + inp() + 'margin-bottom:8px">';
     h += '<input id="snnLabel" list="snnLabels" placeholder="Project label (optional): Nashoba" style="' + inp() + 'margin-bottom:8px">';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#94a3b8">Bucket <select id="snnLane" style="flex:1;padding:8px 9px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:7px;color:#e2e8f0;font:inherit;font-size:13px;color-scheme:dark">' + laneOptions('initial') + '</select></div>';
     h += '<datalist id="snnLabels">' + S.labels.map(function (l) { return '<option value="' + esc(l) + '">'; }).join('') + '</datalist>';
     h += btn('addsave', 'Add', PRI);
     h += '<div id="snnAddMsg" style="font-size:12px;color:#34d399;margin-top:8px;min-height:1em"></div>';
+    function itemRow(a, done) {
+      if (editingId === a.id) {
+        return '<div style="padding:8px 0;border-top:1px solid #2a2a3e">' +
+          '<input id="snnEditTitle" value="' + esc(a.title) + '" style="' + inp() + 'margin-bottom:6px">' +
+          '<input id="snnEditLabel" list="snnLabels" value="' + esc(a.label || '') + '" placeholder="Project label (optional)" style="' + inp() + 'margin-bottom:6px">' +
+          '<select id="snnEditLane" style="' + inp() + 'margin-bottom:6px;color-scheme:dark">' + laneOptions(itemLane(a)) + '</select>' +
+          '<div style="display:flex;gap:6px">' + btn('editsave', 'Save', PRI, a.id) + btn('editcancel', 'Cancel', null, a.id) + '</div></div>';
+      }
+      var ic = 'background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;';
+      return '<div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-top:1px solid #2a2a3e">' +
+        '<span style="flex:1;min-width:0;' + (done ? 'color:#64748b;text-decoration:line-through' : '') + '">' + (a.label ? '<span style="font-size:11px;color:#67e8f9">' + esc(a.label) + '</span> ' : '') + esc(a.title) +
+        (done ? '' : '<span style="display:block;font-size:11px;color:#64748b">' + esc((ITEM_LANES.filter(function (l) { return l[0] === itemLane(a); })[0] || ['', ''])[1]) + (isParked(a) ? ' \u00b7 parked until ' + esc(shortDate(a.due)) : '') + '</span>') + '</span>' +
+        (done ? '<button data-a="areopen" data-id="' + a.id + '" title="Not done after all" style="' + ic + 'color:#94a3b8;font-size:12px;text-decoration:underline">reopen</button>' :
+          '<button data-a="aedit" data-id="' + a.id + '" title="Edit" style="' + ic + 'color:#94a3b8">\u270e</button>' +
+          '<button data-a="adone" data-id="' + a.id + '" title="Mark done" style="' + ic + 'color:#34d399">\u2713</button>' +
+          '<button data-a="adel" data-id="' + a.id + '" title="Remove" style="' + ic + 'color:#64748b">\u2715</button>') + '</div>';
+    }
     if (open.length) {
       h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#64748b;margin:16px 0 6px">OPEN ITEMS</div>';
-      open.forEach(function (a) {
-        h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #2a2a3e">' +
-          (a.label ? '<span style="font-size:11px;color:#67e8f9">' + esc(a.label) + '</span>' : '') +
-          '<span style="flex:1">' + esc(a.title) + '</span>' +
-          '<button data-a="adone" data-id="' + a.id + '" title="Mark done" style="background:none;border:none;color:#34d399;cursor:pointer;font-size:15px">\u2713</button>' +
-          '<button data-a="adel" data-id="' + a.id + '" title="Remove" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:15px">\u2715</button></div>';
-      });
+      open.forEach(function (a) { h += itemRow(a, false); });
     }
+    if (doneToday.length) {
+      h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#64748b;margin:16px 0 6px">DONE TODAY</div>';
+      doneToday.forEach(function (a) { h += itemRow(a, true); });
+    }
+    h += '<div style="margin-top:22px;padding-top:12px;border-top:1px solid #2a2a3e;font-size:12px;color:#64748b">Your items are saved in this browser only. ' +
+      '<button data-a="backup" style="background:none;border:none;color:#94a3b8;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">Back up</button> \u00b7 ' +
+      '<button data-a="restore" style="background:none;border:none;color:#94a3b8;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">Restore</button>' +
+      '<input type="file" id="snnRestoreFile" accept=".json,application/json" style="display:none"></div>';
     body.innerHTML = h;
-    var t = document.getElementById('snnTitle'); t.focus();
-    t.addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
-    document.getElementById('snnLabel').addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
+    if (editingId) {
+      var et = document.getElementById('snnEditTitle');
+      if (et) { et.focus(); [et, document.getElementById('snnEditLabel')].forEach(function (x) { x.addEventListener('keydown', function (e) { if (e.key === 'Enter') saveEdit(editingId); if (e.key === 'Escape') { editingId = null; renderAdd(); } }); }); }
+    } else {
+      var t = document.getElementById('snnTitle'); t.focus();
+      t.addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
+      document.getElementById('snnLabel').addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
+    }
+    document.getElementById('snnRestoreFile').addEventListener('change', function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        try {
+          var d = JSON.parse(rd.result); if (!d || !d.adhoc) throw new Error('not a What\u2019s Next backup');
+          var before = JSON.parse(JSON.stringify(S));
+          ['quick', 'skip', 'seen', 'logs'].forEach(function (k) { d[k] = d[k] || {}; }); d.labels = d.labels || []; d.seen[TODAY] = d.seen[TODAY] || [];
+          S = d; save(); showUndo('Restored from backup.', function () { S = before; save(); });
+          render();
+        } catch (e) { var m = document.getElementById('snnAddMsg'); if (m) { m.textContent = 'That file isn\u2019t a What\u2019s Next backup.'; m.style.color = '#f87171'; } }
+      };
+      rd.readAsText(f);
+    });
   }
   function inp() { return 'width:100%;box-sizing:border-box;padding:9px 11px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:7px;color:#e2e8f0;font:inherit;font-size:14px;outline:none;'; }
+  function saveEdit(id) {
+    var a = S.adhoc.filter(function (x) { return x.id === id; })[0]; if (!a) return;
+    var t = document.getElementById('snnEditTitle').value.trim(), l = document.getElementById('snnEditLabel').value.trim();
+    if (!t) { document.getElementById('snnEditTitle').style.borderColor = '#f87171'; return; }
+    a.title = t; a.label = l; a.lane = document.getElementById('snnEditLane').value; a.touched = TODAY; if (l && S.labels.indexOf(l) < 0) S.labels.push(l);
+    editingId = null; save(); renderAdd();
+  }
+  var undoFn = null, undoTimer = null;
+  function showUndo(msg, fn) {
+    undoFn = fn; var bar = document.getElementById('snnUndo');
+    document.getElementById('snnUndoMsg').textContent = msg; bar.style.display = 'flex';
+    clearTimeout(undoTimer); undoTimer = setTimeout(function () { bar.style.display = 'none'; undoFn = null; }, 8000);
+  }
+  function backup() {
+    var blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'whats-next-backup-' + TODAY + '.json';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
   function addItem() {
     var t = document.getElementById('snnTitle'), l = document.getElementById('snnLabel');
     var title = t.value.trim(), label = l.value.trim();
     if (!title) { document.getElementById('snnAddMsg').textContent = 'Type what the item is first.'; document.getElementById('snnAddMsg').style.color = '#f87171'; return; }
-    S.adhoc.push({ id: uid(), title: title, label: label, added: TODAY, done: null });
+    var laneSel = document.getElementById('snnLane');
+    S.adhoc.push({ id: uid(), title: title, label: label, lane: laneSel ? laneSel.value : 'initial', added: TODAY, done: null });
     if (label && S.labels.indexOf(label) < 0) S.labels.push(label);
     save(); renderAdd();
     document.getElementById('snnAddMsg').textContent = 'Added.';
@@ -633,8 +722,13 @@
   function fallback(text) { var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
 
   function parkMsg(t, bad) { var m = document.getElementById('snnParkMsg'); if (m) { m.textContent = t; m.style.color = bad ? '#f87171' : '#34d399'; } }
+  function itemById(id) { return S.adhoc.filter(function (x) { return x.id === id; })[0] || null; }
   function park(id, ymd) {
-    var t = byId(id); if (!t) return;
+    var t = byId(id), a = t ? null : itemById(id); if (!t && !a) return;
+    if (a) {
+      if (daysUntil(ymd + ' 17:00:00') <= PARK_LEAD) { parkMsg('Pick a date more than ' + PARK_LEAD + ' days out, or it stays on your list.', true); return; }
+      a.due = ymd + ' 17:00:00'; S.parked = S.parked || {}; S.parked[id] = ymd; save(); render(); return;
+    }
     if (daysUntil(ymd + ' 17:00:00') <= PARK_LEAD) { parkMsg('Pick a date more than ' + PARK_LEAD + ' days out, or it stays on your list.', true); return; }
     parkMsg('Setting due date\u2026');
     setDue(t, ymd).then(function () {
@@ -642,7 +736,9 @@
     }).catch(function (e) { parkMsg('Couldn\u2019t set the due date (' + e.message + '). Nothing changed.', true); });
   }
   function unpark(id, el) {
-    var t = byId(id); if (!t) return;
+    var t = byId(id), a = t ? null : itemById(id);
+    if (a) { a.due = ''; if (S.parked) delete S.parked[id]; save(); render(); return; }
+    if (!t) return;
     el.textContent = 'Clearing\u2026';
     setDue(t, '').then(function () {
       t.due = ''; if (S.parked) delete S.parked[id]; save(); render();
@@ -681,6 +777,15 @@
     if (msg) { msg.textContent = 'Found ' + t.number + ', highlighted in the list.'; msg.style.color = '#34d399'; }
   }
 
+  ov.addEventListener('change', function (e) {
+    var el = e.target;
+    if (el.getAttribute && el.getAttribute('data-a') === 'movelane') {
+      var a = itemById(el.getAttribute('data-id')); if (!a) return;
+      var from = itemLane(a); a.lane = el.value; a.touched = TODAY; save(); render();
+      showUndo('Moved to ' + (ITEM_LANES.filter(function (l) { return l[0] === a.lane; })[0] || ['', a.lane])[1] + '.', function () { a.lane = from; save(); });
+    }
+  });
+
   /* ---------------- events ---------------- */
   ov.addEventListener('click', function (e) {
     var tb = e.target.closest('[data-tab]'); if (tb) { setTab(tb.getAttribute('data-tab')); return; }
@@ -707,8 +812,16 @@
       case 'tab-help': setTab(tab === 'help' ? 'next' : 'help'); break;
       case 'restart': S.seen[TODAY] = []; delete S.focus; lastActive = null; save(); render(); break;
       case 'bucket': var bb = buckets()[id]; if (bb && bb.next) { S.focus = { day: TODAY, step: id }; lastActive = id; save(); render(); } break;
-      case 'adone': S.adhoc.forEach(function (x) { if (x.id === id) x.done = TODAY; }); save(); render(); break;
-      case 'adel': S.adhoc = S.adhoc.filter(function (x) { return x.id !== id; }); save(); render(); break;
+      case 'adone': var ad1 = S.adhoc.filter(function (x) { return x.id === id; })[0]; if (ad1) { ad1.done = TODAY; save(); render(); showUndo('Marked \u201c' + ad1.title + '\u201d done.', function () { ad1.done = null; save(); }); } break;
+      case 'pin': S.pin = S.pin || {}; if (S.pin[id]) delete S.pin[id]; else { S.pin[id] = new Date().toISOString(); S.focus = { day: TODAY, step: 'top' }; lastActive = 'top'; } save(); render(); break;
+      case 'areopen': S.adhoc.forEach(function (x) { if (x.id === id) x.done = null; }); save(); render(); break;
+      case 'aedit': editingId = id; renderAdd(); break;
+      case 'editsave': saveEdit(id); break;
+      case 'editcancel': editingId = null; renderAdd(); break;
+      case 'undo': if (undoFn) { undoFn(); undoFn = null; } document.getElementById('snnUndo').style.display = 'none'; render(); break;
+      case 'backup': backup(); break;
+      case 'restore': document.getElementById('snnRestoreFile').click(); break;
+      case 'adel': var idx = -1; S.adhoc.forEach(function (x, i) { if (x.id === id) idx = i; }); if (idx >= 0) { var gone = S.adhoc.splice(idx, 1)[0]; save(); render(); showUndo('Removed \u201c' + gone.title + '\u201d.', function () { S.adhoc.splice(idx, 0, gone); save(); }); } break;
       case 'addsave': addItem(); break;
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
