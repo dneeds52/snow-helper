@@ -17,7 +17,13 @@
   var SLA_AT_RISK = 75;            // SLA % elapsed that counts as "in danger"
   var TABLES = ['sc_task', 'incident', 'change_request'];
   var ME = 'assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe'; // ServiceNow's built-in "Me" filter
-  var OPEN = 'active=true^stateNOT IN3,4,7,8,6';                   // same as your name link in SNOW Helper
+  var OPEN = 'active=true^stateNOT IN3,4,7,8,6';
+  var GROUP = 'b0f881a7db916e00cdb372fc0f961973';                  // EPIC-ASAP assignment group
+  var QUEUE_DAY = 3; // Wednesday: you're on the group queue
+  // Group queue switch: on automatically on Wednesdays; flip it for any day (only lasts that day)
+  function queueOn() { return S.queue && S.queue.day === dkey() ? S.queue.on : new Date().getDay() === QUEUE_DAY; }
+  // your tickets, plus (when the queue is on) your group's tickets nobody has taken yet
+  function listQuery() { return OPEN + '^' + ME + (queueOn() ? '^NQ' + OPEN + '^assigned_toISEMPTY^assignment_group=' + GROUP : ''); }
   var KEY = 'snNext_v1';
   var LANES = { '': 'Initial Action', '0': 'Update Needed', '1': 'Update Needed', '2': 'Prioritize', '3': 'Discuss',
                 '4': 'Scheduled', '5': 'Blocked', '6': 'Deferred', '7': 'DC Move', '8': 'ASAP PC' };
@@ -170,13 +176,13 @@
   function loadAll(silent) {
     if (loading) return; loading = true; lastLoad = Date.now();
     if (!silent) { loaded = false; loadErr = ''; render(); }
-    var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date';
+    var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date,assigned_to';
     Promise.all(TABLES.map(function (t) {
-      return q(t, OPEN + '^' + ME, fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; }).catch(function () { return []; });
+      return q(t, listQuery(), fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; }).catch(function () { return []; });
     })).then(function (sets) {
       tickets = [].concat.apply([], sets).map(function (x) {
         return { id: v(x.sys_id), table: x._table, number: dv(x.number), sd: dv(x.short_description), order: v(x.order),
-                 lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), due: v(x.due_date) || '', lastNote: null, sla: null };
+                 lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), unassigned: !v(x.assigned_to), due: v(x.due_date) || '', lastNote: null, sla: null };
       });
       if (!tickets.length) return;
       var ids = tickets.map(function (t) { return t.id; });
@@ -279,9 +285,6 @@
     mergeByAge(updT, function (t) { return noteAge(t) || 0; }, itemsIn('update')).forEach(function (x) {
       push('update', x, isItem(x) ? itemWhy(x) + ', needs an update' : 'In Update Needed, ' + updateText(x));
     });
-    live.filter(function (t) { return t.lane === '2' && (noteAge(t) || 0) > STALE_DAYS; })
-      .sort(function (a, b) { return (noteAge(b) || 0) - (noteAge(a) || 0); })
-      .forEach(function (t) { var u = updateText(t); push('update', t, u.charAt(0).toUpperCase() + u.slice(1) + ', status may be out of date'); });
     // 3. Quick wins - tickets or items you've tagged as 15 minutes or less
     live.filter(function (t) { return S.quick[t.id]; }).forEach(function (t) { push('quick', t, 'You tagged this as a quick win'); });
     items.filter(function (a) { return S.quick[a.id] && itemLane(a) !== 'waiting' && itemLane(a) !== 'deferred'; }).forEach(function (a) { push('quick', a, 'You tagged this as a quick win'); });
@@ -292,7 +295,7 @@
     var urgent = prT.filter(function (t) { return w(t) < 2; }), rest = prT.filter(function (t) { return w(t) === 2; });
     urgent.concat(mergeByAge(rest, function (t) { return daysAgo(t.opened) || 0; }, itemsIn('prioritize'))).forEach(function (x) {
       if (isItem(x)) { push('prioritize', x, itemWhy(x)); return; }
-      push('prioritize', x, x.sla && x.sla.breached ? 'SLA missed' : (x.sla && x.sla.pct >= SLA_AT_RISK ? 'SLA ' + Math.round(x.sla.pct) + '% used' + (x.sla.due ? ', due ' + x.sla.due : '') : 'In Prioritize, order ' + x.order));
+      push('prioritize', x, x.sla && x.sla.breached ? 'SLA missed' : (x.sla && x.sla.pct >= SLA_AT_RISK ? 'SLA ' + Math.round(x.sla.pct) + '% used' + (x.sla.due ? ', due ' + x.sla.due : '') : 'In Prioritize, order ' + x.order) + ((noteAge(x) || 0) > STALE_DAYS ? ' \u00b7 ' + updateText(x) : ''));
     });
     return out;
   }
@@ -382,6 +385,11 @@
         esc(Object.keys(byStep).map(function (k) { return byStep[k] + ' new in ' + STEP_NAME[k]; }).join(', ')) + '. Up after this card.</span>' +
         '<button data-a="gonew" style="background:none;border:1px solid #f87171;color:#f87171;border-radius:6px;padding:3px 9px;font:inherit;font-size:12px;font-weight:600;cursor:pointer">Go now</button></div>';
     }
+    var qo = queueOn(), qAuto = !(S.queue && S.queue.day === TODAY);
+    h += '<button data-a="queue" title="Include your group\u2019s unassigned tickets" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:10px;padding:6px 9px;border-radius:7px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:12px;cursor:pointer;text-align:left">' +
+      '<span style="display:inline-block;width:28px;height:16px;border-radius:999px;position:relative;background:' + (qo ? '#fbbf24' : '#2a2a3e') + '"><span style="position:absolute;top:2px;left:' + (qo ? '14px' : '2px') + ';width:12px;height:12px;border-radius:50%;background:#0f0f1a"></span></span>' +
+      '<span style="color:' + (qo ? '#fbbf24' : '#94a3b8') + '">Group queue ' + (qo ? 'on' : 'off') + '</span>' +
+      '<span style="margin-left:auto;color:#64748b">' + (qAuto ? (qo ? 'Wednesday' : 'auto on Wednesdays') : 'just for today') + '</span></button>';
     h += stripHtml(B, active);
     if (!active) {
       var hidden = {}; tickets.forEach(function (t) { if (['3', '4', '5', '6', '7', '8'].indexOf(t.lane) >= 0) hidden[LANES[t.lane]] = (hidden[LANES[t.lane]] || 0) + 1; });
@@ -410,7 +418,8 @@
     }
     h += '<div style="font-size:13px;color:#cbd5e1"' + (isTicket && it.noteSrc ? ' title="Last update read from the ' + it.noteSrc + '"' : '') + '>' + esc(cur.why) + '</div>';
     if (S.parked && S.parked[it.id] && it.due && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
-    if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) + '</div>';
+    if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) +
+      (it.unassigned ? '<div style="margin-top:6px"><span style="white-space:nowrap;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:#fbbf2422;color:#fbbf24;border:1px solid #fbbf2455">Unassigned \u00b7 group queue</span></div>' : '') + '</div>';
     h += '</div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
     if (isTicket) h += btn('open', 'Open ticket', PRI, it.id) + btn('find', 'Find', null, it.id);
@@ -927,6 +936,7 @@
     var seen = S.seen[TODAY];
     if (['next', 'back', 'skip', 'adone', 'bucket', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
     switch (a) {
+      case 'queue': S.queue = { day: TODAY, on: !queueOn() }; delete S.cur; S.known = null; save(); loadAll(); break;
       case 'gonew': var pn = pendingNew(buckets()); delete S.focus; lastActive = null; if (pn.length) S.cur = { day: TODAY, id: pn[0].id }; save(); render(); break;
       case 'fresh':
         var prevSeen = (S.seen[TODAY] || []).slice(), prevFocus = S.focus;
