@@ -105,7 +105,8 @@
   ov.innerHTML =
     '<div id="snnMain" style="display:flex;flex-direction:column;width:100%;height:100%;min-width:0">' +
     '<div style="display:flex;align-items:center;gap:5px;padding:10px 10px 10px 14px;border-bottom:1px solid #2a2a3e;flex-shrink:0">' +
-      '<span style="font-size:14px;font-weight:700;color:#67e8f9;letter-spacing:.04em;white-space:nowrap">WHAT\u2019S NEXT</span>' +
+      '<span id="snnTitle0" style="font-size:14px;font-weight:700;color:#67e8f9;letter-spacing:.04em;white-space:nowrap">WHAT\u2019S NEXT</span>' +
+      '<span id="snnTimer" data-a="pomoview" title="Focus timer" style="display:none;font-family:Consolas,monospace;font-size:13px;font-weight:700;padding:1px 7px;border-radius:999px;cursor:pointer;white-space:nowrap"></span>' +
       '<span id="snnSub" style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0"></span>' +
       '<button data-a="refresh" title="Refresh tickets" aria-label="Refresh tickets" style="margin-left:auto;background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:4px 5px;border-radius:6px;cursor:pointer;line-height:0">' + ICON_REFRESH + '</button>' +
       '<button data-a="tab-help" title="How to use" aria-label="How to use" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;padding:3px 7px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:700">?</button>' +
@@ -119,7 +120,7 @@
     '<div id="snnBody" style="flex:1;overflow-y:auto;padding:16px 14px"></div>' +
     '</div>' +
     '<div id="snnStrip" data-a="expand" title="Open What\u2019s Next" style="display:none;width:100%;height:100%;cursor:pointer;align-items:center;justify-content:center;box-sizing:border-box;white-space:nowrap">' +
-      '<span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#67e8f9">' + ICON_MAX + 'WHAT\u2019S NEXT</span>' +
+      '<span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#67e8f9">' + ICON_MAX + 'WHAT\u2019S NEXT<span id="snnStripTimer" style="font-family:Consolas,monospace;color:#fbbf24"></span></span>' +
     '</div>';
   document.body.appendChild(ov);
   var NAV_SEL = ['#nav_west', '.navpage-nav', '#gsft_nav'];
@@ -138,7 +139,7 @@
     ov.style.borderRadius = c ? '8px' : '0';
     if (c) {
       // collapsed: small button at the bottom of the menu (or bottom-right corner), menu stays readable
-      ov.style.width = '150px'; ov.style.height = '34px'; ov.style.boxShadow = '0 4px 16px rgba(0,0,0,.4)';
+      ov.style.width = S.pomo ? '196px' : '150px'; ov.style.height = '34px'; ov.style.boxShadow = '0 4px 16px rgba(0,0,0,.4)';
       ov.style.border = '1px solid #a78bfa';
       if (r) { ov.style.left = (r.left + 8) + 'px'; ov.style.right = 'auto'; ov.style.top = (r.bottom - 46) + 'px'; }
       else { ov.style.left = 'auto'; ov.style.right = '12px'; ov.style.top = (window.innerHeight - 46) + 'px'; }
@@ -158,6 +159,39 @@
     }
   }
   var placeTimer = setInterval(place, 1000);
+  /* ---------------- focus timer (Pomodoro: 25 min work, 5 min break) ---------------- */
+  var POMO_WORK = 25, POMO_BREAK = 5, audio = null;
+  function chime(times) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      for (var i = 0; i < (times || 2); i++) {
+        var o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + i * 0.35;
+        o.frequency.value = i % 2 ? 660 : 880; o.connect(g); g.connect(audio.destination);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+        o.start(t0); o.stop(t0 + 0.32);
+      }
+    } catch (e) {}
+  }
+  function pomoStart(id) { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} S.pomo = { id: id, phase: 'work', end: Date.now() + POMO_WORK * 60000 }; save(); pomoTick(); render(); }
+  function pomoStop() { delete S.pomo; save(); pomoTick(); render(); }
+  function mmss(ms) { var t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + pad(t % 60); }
+  function pomoTick() {
+    if (!document.body.contains(ov)) { clearInterval(pomoTimer); return; }
+    var el = document.getElementById('snnTimer'), st = document.getElementById('snnStripTimer'), p = S.pomo;
+    if (p && Date.now() >= p.end) {
+      if (p.phase === 'work') { chime(3); S.pomo = { id: p.id, phase: 'break', end: Date.now() + POMO_BREAK * 60000 }; save(); showUndo('25 minutes done. Take a 5 minute break.', null); }
+      else { chime(2); delete S.pomo; save(); showUndo('Break\u2019s over. Ready for the next one?', null); }
+      p = S.pomo; if (tab === 'next') render();
+    }
+    var t0 = document.getElementById('snnTitle0');
+    if (!p) { el.style.display = 'none'; st.textContent = ''; t0.style.display = 'inline'; return; }
+    t0.style.display = 'none'; // the countdown takes the title's spot so the header buttons still fit
+    var work = p.phase === 'work', left = mmss(p.end - Date.now());
+    el.style.display = 'inline'; el.textContent = (work ? '\u25b6 ' : '\u2615 ') + left;
+    el.style.background = work ? '#fbbf2422' : '#34d39922'; el.style.color = work ? '#fbbf24' : '#34d399'; el.style.border = '1px solid ' + (work ? '#fbbf2466' : '#34d39966');
+    st.textContent = ' \u00b7 ' + (work ? '' : 'break ') + left;
+  }
+  var pomoTimer = setInterval(pomoTick, 1000);
   window.addEventListener('resize', place);
   function tabBtn(id, label) { return '<button data-tab="' + id + '" style="flex:1;padding:6px 4px;border-radius:6px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:12px;font-weight:600;cursor:pointer">' + label + '</button>'; }
   var body = document.getElementById('snnBody');
@@ -429,7 +463,7 @@
     S.cur = { day: TODAY, id: cur.item.id }; save();
     var it = cur.item, col = STEP_COLOR[cur.step], isTicket = !isItem(it);
     h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col + ';text-transform:uppercase;margin-bottom:8px">' +
-      (cur.step === 'prioritize' ? 'Pick this up for 30 min' : STEP_NAME[cur.step]) + '</div>';
+      (cur.step === 'prioritize' ? 'Pick this up for 25 min' : STEP_NAME[cur.step]) + '</div>';
     h += '<div style="border:1px solid ' + col + '66;border-left:4px solid ' + col + ';border-radius:0;background:#1a1a2e;padding:16px;margin-bottom:14px">';
     if (isTicket) {
       h += '<a href="' + esc(BASE + '/' + it.table + '.do?sys_id=' + it.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;font-size:13px;color:#60a5fa;text-decoration:none">' + esc(it.number) + ' \u2197</a>';
@@ -447,6 +481,11 @@
     if (isTicket) h += btn('open', 'Open ticket', PRI, it.id) + btn('find', 'Find', null, it.id);
     else h += btn('adone', '\u2713 Done', GO, it.id);
     h += btn('next', 'Next \u2192', null, it.id) + '</div>';
+    if (cur.step === 'prioritize' || cur.step === 'top') {
+      var mine = S.pomo && S.pomo.id === it.id;
+      if (mine) h += '<div style="display:flex;align-items:center;gap:8px;margin:-2px 0 10px;font-size:12px;color:' + (S.pomo.phase === 'work' ? '#fbbf24' : '#34d399') + '">' + (S.pomo.phase === 'work' ? 'Focus session running' : 'On a break') + btn('pomostop', '\u25a0 Stop timer', 'border:1px solid #2a2a3e;background:none;color:#94a3b8;padding:4px 9px;font-size:12px', it.id) + '</div>';
+      else h += '<div style="margin:-2px 0 10px">' + btn('pomostart', '\u25b6 Start 25 min', 'border:1px solid #fbbf24;background:#fbbf2422;color:#fbbf24', it.id) + (S.pomo ? '<span style="font-size:12px;color:#64748b;margin-left:8px">(replaces the running timer)</span>' : '') + '</div>';
+    }
     if (isTicket) h += '<div id="snnFindMsg" style="font-size:12px;margin:-4px 0 8px;min-height:0"></div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('skip', 'Skip for today', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id);
     h += btn('pin', (S.pin && S.pin[it.id]) ? '\u2b07 Not important' : '\u2b06 Important', 'border:1px solid #2a2a3e;background:none;color:' + ((S.pin && S.pin[it.id]) ? '#f87171' : '#94a3b8'), it.id);
@@ -485,7 +524,7 @@
       '<div style="color:#cbd5e1">' +
       sec('EACH CARD', [
         b('15 min or less?') + ' Open it, do one thing, then ' + b('Next') + '.',
-        b('Bigger and matters now?') + ' Give it a 30-minute block.',
+        b('Bigger and matters now?') + ' Start a 25-minute timer on it, then take 5.',
         b('Not today?') + ' Skip for today.',
         b('After Nashoba?') + ' Park until 2/22.'
       ]) +
@@ -594,6 +633,7 @@
   function showUndo(msg, fn) {
     undoFn = fn; var bar = document.getElementById('snnUndo');
     document.getElementById('snnUndoMsg').textContent = msg; bar.style.display = 'flex';
+    bar.querySelector('[data-a="undo"]').style.display = fn ? '' : 'none';
     clearTimeout(undoTimer); undoTimer = setTimeout(function () { bar.style.display = 'none'; undoFn = null; }, 8000);
   }
   function backup() {
@@ -959,13 +999,16 @@
     if (['next', 'back', 'skip', 'adone', 'bucket', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
     switch (a) {
       case 'queue': S.queue = { day: TODAY, on: !queueOn() }; delete S.cur; S.known = null; save(); loadAll(); break;
+      case 'pomostart': pomoStart(id); break;
+      case 'pomostop': pomoStop(); break;
+      case 'pomoview': setTab('next'); break;
       case 'gonew': var pn = pendingNew(buckets()); delete S.focus; lastActive = null; if (pn.length) S.cur = { day: TODAY, id: pn[0].id }; save(); render(); break;
       case 'fresh':
         var prevSeen = (S.seen[TODAY] || []).slice(), prevFocus = S.focus;
         S.seen[TODAY] = []; delete S.focus; lastActive = null; if (S.newIds) S.newIds.ids = []; save(); render();
         showUndo('Fresh pass started. Tickets you updated today still count as done.', function () { S.seen[TODAY] = prevSeen; if (prevFocus) S.focus = prevFocus; save(); });
         break;
-      case 'close': ov.remove(); clearInterval(placeTimer); clearInterval(autoTimer); break;
+      case 'close': ov.remove(); clearInterval(placeTimer); clearInterval(autoTimer); clearInterval(pomoTimer); break;
       case 'collapse': S.collapsed = true; save(); place(); break;
       case 'expand': S.collapsed = false; save(); place(); break;
       case 'refresh': if (tab === 'wrap') { wrapData = null; renderWrap(); break; } if (tab === 'weekly') { weekData = null; renderWeekly(); break; } if (!loaded) { loadAll(); break; } document.getElementById('snnSub').textContent = 'Refreshing\u2026'; loadAll(true); break;
