@@ -45,7 +45,12 @@
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function v(f) { return f && typeof f === 'object' ? f.value : f; }
   function dv(f) { return f && typeof f === 'object' ? f.display_value : f; }
-  function daysAgo(iso) { if (!iso) return null; var t = Date.parse(iso.replace(' ', 'T') + 'Z'); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
+  // calendar days ago in your local time (yesterday at 4pm = 1, even if it's only 16 hours)
+  function daysAgo(iso) {
+    if (!iso) return null; var t = Date.parse(iso.replace(' ', 'T') + 'Z'); if (isNaN(t)) return null;
+    var a = new Date(t), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+    return Math.round((b - a) / 86400000);
+  }
   function laneKey(order) { var o = String(order == null ? '' : order).trim(); return (o && o !== '0') ? o.padStart(2, '0').charAt(0) : ''; }
 
   /* ---------------- ServiceNow API (reads, plus the one due-date write below) ---------------- */
@@ -175,8 +180,9 @@
       if (!tickets.length) return;
       var ids = tickets.map(function (t) { return t.id; });
       var notes = q('sys_journal_field', 'elementINwork_notes,comments^element_idIN' + ids.join(',') + '^ORDERBYDESCsys_created_on', 'element_id,sys_created_on', 3000)
-        .then(function (r) { var seen = {}; r.forEach(function (n) { var id = v(n.element_id); if (!seen[id]) { seen[id] = 1; var t = byId(id); if (t) t.lastNote = v(n.sys_created_on); } }); })
-        .catch(function () {});
+        .then(function (r) { var seen = {}; r.forEach(function (n) { var id = v(n.element_id); if (!seen[id]) { seen[id] = 1; var t = byId(id); if (t) { t.lastNote = v(n.sys_created_on); t.noteSrc = 'notes table'; } } }); })
+        .catch(function () {})
+        .then(fromTicketText);
       var slas = q('task_sla', 'active=true^taskIN' + ids.join(','), 'task,has_breached,percentage,planned_end_time', 2000)
         .then(function (r) { r.forEach(function (s) { var t = byId(v(s.task)); if (!t) return; var br = String(v(s.has_breached)) === 'true', pct = parseFloat(v(s.percentage)) || 0;
           if (!t.sla || br || pct > t.sla.pct) t.sla = { breached: br || (t.sla && t.sla.breached), pct: Math.max(pct, t.sla ? t.sla.pct : 0), due: dv(s.planned_end_time) }; }); })
@@ -192,6 +198,33 @@
   document.addEventListener('visibilitychange', maybeRefresh);
   window.addEventListener('focus', maybeRefresh);
   var autoTimer = setInterval(function () { if (!document.body.contains(ov)) { clearInterval(autoTimer); return; } if (document.visibilityState === 'visible' && Date.now() - lastLoad > 300000) loadAll(true); }, 60000);
+  /* Backup for "last update": if the notes table gave nothing for a ticket (often a permissions thing),
+     read the ticket's own Work notes + Additional comments text and take the newest timestamp. */
+  function fromTicketText() {
+    var byTable = {};
+    tickets.forEach(function (t) { if (!t.lastNote) (byTable[t.table] = byTable[t.table] || []).push(t.id); });
+    return Promise.all(Object.keys(byTable).map(function (tb) {
+      return q(tb, 'sys_idIN' + byTable[tb].join(','), 'sys_id,work_notes,comments', 500).then(function (r) {
+        r.forEach(function (x) {
+          var t = byId(v(x.sys_id)); if (!t) return;
+          var best = newestStamp(String(dv(x.work_notes) || '') + '\n' + String(dv(x.comments) || ''));
+          if (best) { t.lastNote = best; t.noteSrc = 'ticket text'; }
+        });
+      }).catch(function () {});
+    }));
+  }
+  // "2026-10-20 09:13:22 - Name (Work notes)" or "10-20-2026 09:13:22 AM - Name (Additional comments)" -> newest, as UTC "YYYY-MM-DD HH:MM:SS"
+  function newestStamp(text) {
+    var re = /(\d{1,4})[-\/.](\d{1,2})[-\/.](\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?\s+-\s+[^\n]*?\((Work notes|Additional comments|Comments)\)/gi, m, best = 0;
+    while ((m = re.exec(text))) {
+      var y, mo, d;
+      if (m[1].length === 4) { y = +m[1]; mo = +m[2]; d = +m[3]; } else { mo = +m[1]; d = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+      var h = +m[4]; if (m[7]) { var pm = /p/i.test(m[7]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+      var dt = new Date(y, mo - 1, d, h, +m[5], +(m[6] || 0)).getTime();
+      if (dt > best && dt <= Date.now() + 864e5) best = dt;
+    }
+    return best ? new Date(best).toISOString().slice(0, 19).replace('T', ' ') : null;
+  }
   function byId(id) { for (var i = 0; i < tickets.length; i++) if (tickets[i].id === id) return tickets[i]; return null; }
 
   /* ---------------- the "what's next" order (your Triage Process Guide) ---------------- */
@@ -207,8 +240,8 @@
   function buildQueue() {
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
-    // touched today (a work note or comment from today) = done for today
-    var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t) && !touchedToday(t); });
+    // touched today (a work note or comment from today) stays in its bucket but counts as done
+    var live = tickets.filter(function (t) { return !S.skip[t.id] && !isParked(t); });
     // 1. Initial Action - blank Order
     live.filter(function (t) { return t.lane === ''; })
       .sort(function (a, b) { return (a.opened || '') < (b.opened || '') ? -1 : 1; })
@@ -253,31 +286,62 @@
     if (tab === 'help') return renderHelp();
   }
 
+  var ORDER = ['initial', 'update', 'quick', 'adhoc', 'prioritize'];
+  var lastActive = null;
+  function buckets() {
+    var queue = buildQueue(), seen = S.seen[TODAY] || [], B = {};
+    queue.forEach(function (x) { x.done = seen.indexOf(x.item.id) >= 0 || (x.step !== 'adhoc' && touchedToday(x.item)); });
+    ORDER.forEach(function (k) {
+      var items = queue.filter(function (x) { return x.step === k; });
+      var done = items.filter(function (x) { return x.done; }).length;
+      B[k] = { items: items, total: items.length, done: done, next: items.filter(function (x) { return !x.done; })[0] || null };
+    });
+    return B;
+  }
+  function stripHtml(B, active) {
+    var h = '<div style="margin-bottom:14px">';
+    ORDER.forEach(function (k) {
+      var b = B[k], col = STEP_COLOR[k];
+      if ((k === 'quick' || k === 'adhoc') && !b.total) return;
+      var isActive = k === active, finished = !b.next;
+      var icon = finished ? '\u2713' : (isActive ? '\u25cf' : '\u25cb');
+      var count = !b.total ? 'none' : finished ? 'done' : isActive ? (k === 'prioritize' ? 'next up' : (b.done + 1) + ' of ' + b.total) : (k === 'prioritize' ? '' : String(b.total - b.done));
+      var st = isActive ? 'background:' + col + '1f;border:1px solid ' + col + '66;color:' + col : 'border:1px solid transparent;color:' + (finished ? '#64748b' : '#94a3b8');
+      h += '<button data-a="bucket" data-id="' + k + '" title="' + (finished ? STEP_NAME[k] + ' is done' : 'Jump to ' + STEP_NAME[k]) + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 9px;margin-bottom:3px;border-radius:7px;font:inherit;font-size:13px;text-align:left;cursor:' + (finished ? 'default' : 'pointer') + ';background:none;' + st + '">' +
+        '<span style="width:12px;text-align:center">' + icon + '</span><span>' + STEP_NAME[k] + '</span>' +
+        '<span style="margin-left:auto;font-family:Consolas,monospace;font-size:12px">' + count + '</span></button>';
+    });
+    return h + '</div>';
+  }
   function renderNext() {
     document.getElementById('snnSub').textContent = '';
     if (!loaded) { body.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 0">Reading your tickets\u2026</div>'; return; }
     if (loadErr) { body.innerHTML = '<div style="color:#f87171;margin-bottom:12px">' + esc(loadErr) + '</div>' + btn('refresh', 'Refresh'); return; }
-    var queue = buildQueue(), seen = S.seen[TODAY] || [];
-    var rest = queue.filter(function (x) { return seen.indexOf(x.item.id) < 0; });
-    var cur = rest[0];
-    document.getElementById('snnSub').textContent = rest.length ? rest.length + ' to go' : '';
+    var B = buckets(), seen = S.seen[TODAY] || [];
+    var focus = S.focus && S.focus.day === TODAY ? S.focus.step : null;
+    if (focus && !B[focus].next) { focus = null; delete S.focus; save(); }
+    var active = focus || ORDER.filter(function (k) { return B[k].next; })[0] || null;
+    var banner = (lastActive && lastActive !== active && B[lastActive].total && !B[lastActive].next) ? STEP_NAME[lastActive] + ' done.' : '';
+    lastActive = active;
     var h = '';
-    if (!cur) {
+    if (banner) h += '<div style="background:#34d39922;color:#34d399;border-radius:7px;padding:9px 11px;font-size:13px;margin-bottom:10px">\u2713 ' + esc(banner) + (active ? ' On to ' + STEP_NAME[active] + '.' : '') + '</div>';
+    h += stripHtml(B, active);
+    if (!active) {
       var hidden = {}; tickets.forEach(function (t) { if (['3', '4', '5', '6', '7', '8'].indexOf(t.lane) >= 0) hidden[LANES[t.lane]] = (hidden[LANES[t.lane]] || 0) + 1; });
       h += '<div style="font-size:18px;font-weight:600;margin-bottom:8px">You\u2019re through the list.</div>' +
-        '<div style="color:#94a3b8;line-height:1.6;margin-bottom:16px">Everything in Initial Action, Update Needed, your quick wins, your items, and Prioritize has had a look today.</div>';
+        '<div style="color:#94a3b8;line-height:1.6;margin-bottom:12px">Every bucket has had a look today.</div>';
+      var tt = tickets.filter(touchedToday).length;
+      if (tt) h += '<div style="font-size:12px;color:#34d399;margin-bottom:12px">' + plural(tt, 'ticket') + ' updated today.</div>';
       var hk = Object.keys(hidden);
       if (hk.length) h += '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Not in the walk: ' + hk.map(function (k) { return hidden[k] + ' ' + k; }).join(' \u00b7 ') + '</div>';
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('restart', 'Start over') + btn('tab-wrap', 'Wrap up the day', GO) + '</div>';
-      var tt = tickets.filter(touchedToday).length;
-      if (tt) h += '<div style="font-size:12px;color:#34d399;margin:-8px 0 16px">' + plural(tt, 'ticket') + ' updated today.</div>';
       h += '<div style="margin-top:18px">' + parkedLink() + '</div>';
       body.innerHTML = h; return;
     }
+    var cur = B[active].next;
     var it = cur.item, col = STEP_COLOR[cur.step], isTicket = cur.step !== 'adhoc';
-    var stepItems = queue.filter(function (x) { return x.step === cur.step; }), pos = stepItems.indexOf(cur) + 1;
-    h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col + ';text-transform:uppercase;margin-bottom:10px">' +
-      STEP_NAME[cur.step] + ' \u00b7 ' + pos + ' of ' + stepItems.length + '</div>';
+    h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col + ';text-transform:uppercase;margin-bottom:8px">' +
+      (cur.step === 'prioritize' ? 'Pick this up for 30 min' : STEP_NAME[cur.step]) + '</div>';
     h += '<div style="border:1px solid ' + col + '66;border-left:4px solid ' + col + ';border-radius:0;background:#1a1a2e;padding:16px;margin-bottom:14px">';
     if (isTicket) {
       h += '<a href="' + esc(BASE + '/' + it.table + '.do?sys_id=' + it.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;font-size:13px;color:#60a5fa;text-decoration:none">' + esc(it.number) + ' \u2197</a>';
@@ -286,7 +350,7 @@
       if (it.label) h += '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#67e8f922;color:#67e8f9;border:1px solid #67e8f955">' + esc(it.label) + '</span>';
       h += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin:8px 0 10px">' + esc(it.title) + '</div>';
     }
-    h += '<div style="font-size:13px;color:#cbd5e1">' + esc(cur.why) + '</div>';
+    h += '<div style="font-size:13px;color:#cbd5e1"' + (isTicket && it.noteSrc ? ' title="Last update read from the ' + it.noteSrc + '"' : '') + '>' + esc(cur.why) + '</div>';
     if (isTicket && S.parked && S.parked[it.id] && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
     if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) + '</div>';
     h += '</div>';
@@ -553,7 +617,8 @@
       case 'tab-next': setTab('next'); break;
       case 'find': findOnPage(id); break;
       case 'tab-help': setTab(tab === 'help' ? 'next' : 'help'); break;
-      case 'restart': S.seen[TODAY] = []; save(); render(); break;
+      case 'restart': S.seen[TODAY] = []; delete S.focus; lastActive = null; save(); render(); break;
+      case 'bucket': var bb = buckets()[id]; if (bb && bb.next) { S.focus = { day: TODAY, step: id }; lastActive = id; save(); render(); } break;
       case 'adone': S.adhoc.forEach(function (x) { if (x.id === id) x.done = TODAY; }); save(); render(); break;
       case 'adel': S.adhoc = S.adhoc.filter(function (x) { return x.id !== id; }); save(); render(); break;
       case 'addsave': addItem(); break;
