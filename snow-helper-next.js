@@ -460,49 +460,137 @@
     document.getElementById('snnLabel').value = label;
   }
 
-  /* Wrap up: what you touched today, written as text you can paste */
-  function renderWrap() {
-    document.getElementById('snnSub').textContent = '';
-    body.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 0">Pulling today\u2019s work notes\u2026</div>';
-    var since = TODAY + ' 00:00:00';
-    currentUserName().then(function (u) {
-      userName = u;
-      if (!u) return [];
-      return q('sys_journal_field', 'element=work_notes^sys_created_by=' + u + '^sys_created_on>=javascript:gs.beginningOfToday()^ORDERBYsys_created_on', 'element_id,name,sys_created_on', 500)
-        .catch(function () { return q('sys_journal_field', 'element=work_notes^sys_created_by=' + u + '^sys_created_on>=' + since, 'element_id,name,sys_created_on', 500).catch(function () { return []; }); });
-    }).then(function (notes) {
-      todayNotes = notes || [];
-      var touched = {}, order = [];
-      todayNotes.forEach(function (n) { var id = v(n.element_id); if (!touched[id]) { touched[id] = 1; order.push(id); } });
-      var lines = [];
-      order.forEach(function (id) { var t = byId(id); lines.push(t ? t.number + ' ' + t.sd : 'Ticket ' + id.slice(0, 8) + ' (closed or not assigned to you)'); });
-      var doneAd = S.adhoc.filter(function (a) { return a.done === TODAY; });
-      var openAd = S.adhoc.filter(function (a) { return !a.done; });
-      var log = S.logs[TODAY] || {};
-      var h = '<div style="font-size:16px;font-weight:600;margin-bottom:12px">' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'numeric', day: 'numeric' }) + '</div>';
-      h += '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px">Anything to add?</div>';
-      h += '<textarea id="snnNote" placeholder="Got pulled into a downtime call for an hour" style="' + inp() + 'min-height:64px;resize:vertical;margin-bottom:12px">' + esc(log.note || '') + '</textarea>';
-      h += '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px">Your summary (edit freely before copying)</div>';
-      h += '<textarea id="snnSum" style="' + inp() + 'min-height:220px;resize:vertical;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;margin-bottom:10px"></textarea>';
-      h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + btn('copysum', 'Copy for OneNote', GO) + '<span id="snnCopied" style="font-size:12px;color:#34d399;display:none">Copied</span></div>';
-      if (!userName) h += '<div style="font-size:12px;color:#fbbf24;margin-top:10px">Couldn\u2019t tell who you are from this page, so ServiceNow work notes are left out. Your own items are still included.</div>';
-      body.innerHTML = h;
-      function build() {
-        var note = document.getElementById('snnNote').value.trim();
-        var out = [];
-        out.push(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
-        if (lines.length) { out.push('', 'Worked on in ServiceNow:'); lines.forEach(function (l) { out.push('- ' + l); }); }
-        if (doneAd.length) { out.push('', 'Done:'); doneAd.forEach(function (a) { out.push('- ' + (a.label ? a.label + ': ' : '') + a.title); }); }
-        if (openAd.length) { out.push('', 'Still open:'); openAd.forEach(function (a) { out.push('- ' + (a.label ? a.label + ': ' : '') + a.title); }); }
-        if (note) out.push('', 'Notes: ' + note);
-        if (out.length === 1) out.push('', 'Nothing logged yet today.');
-        return out.join('\n');
-      }
-      var sum = document.getElementById('snnSum'); sum.value = build();
-      document.getElementById('snnNote').addEventListener('input', function () {
-        S.logs[TODAY] = { note: this.value, tickets: lines, done: doneAd.map(function (a) { return a.id; }) }; save(); sum.value = build();
+  /* ---------------- Wrap up ----------------
+     Reads today's activity straight from your tickets (assigned to you, updated today), so it works even
+     when the notes table is off-limits: closed tickets show by name, and the text of your notes and comments
+     is included. Time buttons (Fibonacci-ish hours) feed the summary and the Friday time list. */
+  var HOURS = [0.5, 1, 2, 3, 5, 8];
+  function hrs(h) { return h === 0.5 ? '\u00bdh' : (h % 1 ? Math.floor(h) + '\u00bd' : h) + 'h'; }
+  function myFullName() {
+    var u = null;
+    try { u = window.g_user; } catch (e) {}
+    for (var i = 0; !u && i < frames.length; i++) { try { u = frames[i].g_user; } catch (e) {} }
+    if (!u) return '';
+    try { if (u.getFullName) return u.getFullName(); } catch (e) {}
+    return u.fullName || [u.firstName, u.lastName].filter(Boolean).join(' ');
+  }
+  // split a journal field's text into entries: {when, author, kind, text}
+  function parseJournal(text, kind) {
+    var re = /(\d{1,4})[-\/.](\d{1,2})[-\/.](\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?\s+-\s+([^\n(]*?)\s*\((Work notes|Additional comments|Comments)\)/gi;
+    var heads = [], m;
+    while ((m = re.exec(text))) {
+      var y, mo, d;
+      if (m[1].length === 4) { y = +m[1]; mo = +m[2]; d = +m[3]; } else { mo = +m[1]; d = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+      var h = +m[4]; if (m[7]) { var pm = /p/i.test(m[7]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+      heads.push({ at: m.index, end: re.lastIndex, when: new Date(y, mo - 1, d, h, +m[5], +(m[6] || 0)), author: m[8].trim(), kind: kind });
+    }
+    return heads.map(function (hd, i) {
+      hd.text = text.slice(hd.end, i + 1 < heads.length ? heads[i + 1].at : text.length).replace(/\s+/g, ' ').trim(); return hd;
+    });
+  }
+  var wrapData = null; // cached per open of the tab: {rows, me, err}
+  function localMidnightUTC() { var d = new Date(); d.setHours(0, 0, 0, 0); return new Date(d - 864e5 / 6).toISOString().slice(0, 19).replace('T', ' '); }
+  function fetchWrap() {
+    var me = myFullName();
+    var fields = 'sys_id,number,short_description,sys_class_name,state,closed_at,work_notes,comments';
+    return q('task', ME + '^sys_updated_on>=' + localMidnightUTC(), fields, 300).then(function (r) {
+      var rows = [];
+      r.forEach(function (x) {
+        var entries = parseJournal(String(dv(x.work_notes) || ''), 'Work note').concat(parseJournal(String(dv(x.comments) || ''), 'Comment'))
+          .filter(function (e) { return dkey(e.when) === TODAY && (!me || e.author.toLowerCase() === me.toLowerCase()); })
+          .sort(function (a, b) { return a.when - b.when; });
+        var state = String(dv(x.state) || '');
+        var ca = v(x.closed_at), closedToday = ca && dkey(new Date(Date.parse(ca.replace(' ', 'T') + 'Z'))) === TODAY;
+        var closed = !!closedToday && /closed|resolved|complete|cancel/i.test(state);
+        if (!entries.length && !closed) return;
+        rows.push({ id: v(x.sys_id), number: dv(x.number), sd: dv(x.short_description), state: state, closed: closed,
+                    notes: entries.map(function (e) { return e.text; }).filter(Boolean) });
       });
-      S.logs[TODAY] = { note: log.note || '', tickets: lines, done: doneAd.map(function (a) { return a.id; }) }; save();
+      rows.sort(function (a, b) { return a.number < b.number ? -1 : 1; });
+      return { rows: rows, me: me };
+    }).catch(function (e) { return { rows: [], me: me, err: e.message || 'error' }; });
+  }
+  function dayTime() { S.time = S.time || {}; S.time[TODAY] = S.time[TODAY] || {}; return S.time[TODAY]; }
+  function timeChips(id) {
+    var cur = dayTime()[id];
+    return '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">' + HOURS.map(function (h) {
+      var on = cur === h;
+      return '<button data-a="settime" data-id="' + esc(id) + '" data-h="' + h + '" style="padding:3px 8px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid ' + (on ? '#67e8f9' : '#2a2a3e') + ';background:' + (on ? '#67e8f9' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + hrs(h) + '</button>';
+    }).join('') + '</div>';
+  }
+  function wrapItems() {
+    var rows = (wrapData && wrapData.rows) || [];
+    var t = dayTime();
+    var doneAd = S.adhoc.filter(function (a) { return a.done === TODAY; });
+    // still-open added items: only ones added today or with time logged today
+    var openAd = S.adhoc.filter(function (a) { return !a.done && (a.added === TODAY || t[a.id]); });
+    return { rows: rows, doneAd: doneAd, openAd: openAd };
+  }
+  function buildSummary() {
+    var w = wrapItems(), t = dayTime(), total = 0, out = [];
+    function tm(id) { var h = t[id]; if (h) { total += h; return ' (' + hrs(h) + ')'; } return ''; }
+    var lines = [];
+    if (w.rows.length) {
+      lines.push('', 'ServiceNow:');
+      w.rows.forEach(function (r) {
+        lines.push('- ' + r.number + ' ' + r.sd + tm(r.id) + (r.closed ? ' - ' + r.state : ''));
+        r.notes.forEach(function (n) { lines.push('    ' + (n.length > 160 ? n.slice(0, 157) + '...' : n)); });
+      });
+    }
+    if (w.doneAd.length) { lines.push('', 'Done:'); w.doneAd.forEach(function (a) { lines.push('- ' + (a.label ? a.label + ': ' : '') + a.title + tm(a.id)); }); }
+    if (w.openAd.length) { lines.push('', 'Still open:'); w.openAd.forEach(function (a) { lines.push('- ' + (a.label ? a.label + ': ' : '') + a.title + tm(a.id)); }); }
+    var note = ((S.logs[TODAY] || {}).note || '').trim();
+    if (note) lines.push('', 'Notes: ' + note);
+    out.push(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + (total ? '  (total ' + hrs(total) + ')' : ''));
+    if (!lines.length) lines.push('', 'Nothing logged yet today.');
+    return out.concat(lines).join('\n');
+  }
+  function logToday() { S.logs[TODAY] = S.logs[TODAY] || { note: '' }; return S.logs[TODAY]; }
+  function renderWrap(useCache) {
+    document.getElementById('snnSub').textContent = '';
+    if (!useCache || !wrapData) {
+      body.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 0">Pulling today\u2019s activity\u2026</div>';
+      fetchWrap().then(function (d) { wrapData = d; if (tab === 'wrap') renderWrap(true); });
+      return;
+    }
+    var w = wrapItems(), log = logToday();
+    var h = '<div style="font-size:16px;font-weight:600;margin-bottom:4px">' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'numeric', day: 'numeric' }) + '</div>';
+    h += '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Tap how long each one took. It goes in the summary and your Friday time list.</div>';
+    function row(id, top, sub, notes) {
+      return '<div style="padding:9px 0;border-top:1px solid #2a2a3e">' + top +
+        (sub ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + sub + '</div>' : '') +
+        (notes ? '<div style="font-size:12px;color:#94a3b8;margin-top:3px;line-height:1.4">' + notes + '</div>' : '') + timeChips(id) + '</div>';
+    }
+    if (w.rows.length) {
+      h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#60a5fa;margin:4px 0 2px">SERVICENOW</div>';
+      w.rows.forEach(function (r) {
+        var n = r.notes.length ? esc(r.notes[r.notes.length - 1].slice(0, 110)) + (r.notes[r.notes.length - 1].length > 110 ? '\u2026' : '') : '';
+        h += row(r.id, '<div style="font-size:13px"><span style="font-family:Consolas,monospace;color:#60a5fa">' + esc(r.number) + '</span> ' + esc(r.sd) + '</div>',
+          r.closed ? esc(r.state) : plural(r.notes.length, 'update'), n);
+      });
+    }
+    var ad = w.doneAd.concat(w.openAd);
+    if (ad.length) {
+      h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:14px 0 2px">YOUR ITEMS</div>';
+      ad.forEach(function (a) { h += row(a.id, '<div style="font-size:13px">' + (a.label ? '<span style="color:#67e8f9">' + esc(a.label) + ':</span> ' : '') + esc(a.title) + '</div>', a.done ? 'Done' : 'Still open', ''); });
+    }
+    if (!w.rows.length && !ad.length) h += '<div style="color:#64748b;font-size:13px;padding:6px 0 4px">No ticket activity from you today yet.</div>';
+    if (wrapData.err) h += '<div style="font-size:12px;color:#f87171;margin-top:8px">Couldn\u2019t read today\u2019s tickets (' + esc(wrapData.err) + '). Your own items are still included.</div>';
+    else if (!wrapData.me) h += '<div style="font-size:12px;color:#fbbf24;margin-top:8px">Couldn\u2019t tell your name from this page, so notes from anyone today are included.</div>';
+    h += '<div style="font-size:12px;color:#94a3b8;margin:16px 0 6px">Anything to add?</div>';
+    h += '<textarea id="snnNote" placeholder="Got pulled into a downtime call for an hour" style="' + inp() + 'min-height:56px;resize:vertical;margin-bottom:12px">' + esc(log.note || '') + '</textarea>';
+    h += '<div style="display:flex;align-items:baseline;margin-bottom:6px"><span style="font-size:12px;color:#94a3b8">Your summary (edit freely before copying)</span>' +
+      '<button data-a="rebuildsum" id="snnRebuild" style="margin-left:auto;background:none;border:none;color:#64748b;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;display:' + (log.edited ? 'inline' : 'none') + '">Rebuild</button></div>';
+    h += '<textarea id="snnSum" style="' + inp() + 'min-height:220px;resize:vertical;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;margin-bottom:10px"></textarea>';
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + btn('copysum', 'Copy for OneNote', GO) + '<span id="snnCopied" style="font-size:12px;color:#34d399;display:none">Copied</span></div>';
+    var keepScroll = body.scrollTop;
+    body.innerHTML = h; body.scrollTop = keepScroll;
+    var sum = document.getElementById('snnSum');
+    sum.value = log.edited && log.summary != null ? log.summary : buildSummary();
+    // your edits to the summary are kept; it stops auto-rebuilding until you click Rebuild
+    sum.addEventListener('input', function () { var l = logToday(); l.summary = sum.value; l.edited = true; save(); document.getElementById('snnRebuild').style.display = 'inline'; });
+    document.getElementById('snnNote').addEventListener('input', function () {
+      var l = logToday(); l.note = this.value; save(); if (!l.edited) sum.value = buildSummary();
     });
   }
 
@@ -603,7 +691,7 @@
       case 'close': ov.remove(); clearInterval(placeTimer); clearInterval(autoTimer); break;
       case 'collapse': S.collapsed = true; save(); place(); break;
       case 'expand': S.collapsed = false; save(); place(); break;
-      case 'refresh': if (!loaded) { loadAll(); break; } document.getElementById('snnSub').textContent = 'Refreshing\u2026'; loadAll(true); break;
+      case 'refresh': if (tab === 'wrap') { wrapData = null; renderWrap(); break; } if (!loaded) { loadAll(); break; } document.getElementById('snnSub').textContent = 'Refreshing\u2026'; loadAll(true); break;
       case 'open': var t = byId(id); if (t) window.open(BASE + '/' + t.table + '.do?sys_id=' + t.id, '_blank'); break;
       case 'next': if (seen.indexOf(id) < 0) seen.push(id); save(); render(); break;
       case 'back': seen.pop(); save(); render(); break;
@@ -624,6 +712,8 @@
       case 'addsave': addItem(); break;
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
+      case 'settime': var dt = dayTime(), hh = parseFloat(el.getAttribute('data-h')); if (dt[id] === hh) delete dt[id]; else dt[id] = hh; save(); renderWrap(true); break;
+      case 'rebuildsum': var lt = logToday(); lt.edited = false; delete lt.summary; save(); renderWrap(true); break;
       case 'copyweek': copy(document.getElementById('snnWeek').value); break;
       case 'wlabel': weeklyLabel = id; render(); break;
     }
