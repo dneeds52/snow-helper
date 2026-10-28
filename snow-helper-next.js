@@ -189,7 +189,7 @@
           if (!t.sla || br || pct > t.sla.pct) t.sla = { breached: br || (t.sla && t.sla.breached), pct: Math.max(pct, t.sla ? t.sla.pct : 0), due: dv(s.planned_end_time) }; }); })
         .catch(function () {});
       return Promise.all([notes, slas]);
-    }).then(function () { loading = false; loaded = true; loadErr = ''; var sb = document.getElementById('snnSub'); if (sb && /^Refresh/.test(sb.textContent)) sb.textContent = ''; if (!silent || tab === 'next' || tab === 'parked') keepTyping(render); })
+    }).then(function () { loading = false; loaded = true; loadErr = ''; noteArrivals(); var sb = document.getElementById('snnSub'); if (sb && /^Refresh/.test(sb.textContent)) sb.textContent = ''; if (!silent || tab === 'next' || tab === 'parked') keepTyping(render); })
       .catch(function (e) { loading = false; if (silent) return; loaded = true; loadErr = 'Couldn\u2019t load your tickets (' + e.message + '). Try Refresh.'; render(); });
   }
   // don't wipe anything you're typing in during a background refresh
@@ -324,7 +324,22 @@
     });
     return B;
   }
+  /* New arrivals: anything that shows up after your first load of the day is "new" until you've been through it */
+  function noteArrivals() {
+    var ids = buildQueue().map(function (x) { return x.item.id; });
+    if (!S.known || S.known.day !== TODAY) { S.known = { day: TODAY, ids: ids }; S.newIds = { day: TODAY, ids: [] }; save(); return; }
+    if (!S.newIds || S.newIds.day !== TODAY) S.newIds = { day: TODAY, ids: [] };
+    ids.forEach(function (id) { if (S.known.ids.indexOf(id) < 0) { S.known.ids.push(id); S.newIds.ids.push(id); } });
+    save();
+  }
+  // new arrivals you haven't been through yet: [{step, id}]
+  function pendingNew(B) {
+    var ids = (S.newIds && S.newIds.day === TODAY) ? S.newIds.ids : [], out = [];
+    ORDER.forEach(function (k) { B[k].items.forEach(function (x) { if (!x.done && ids.indexOf(x.item.id) >= 0) out.push({ step: k, id: x.item.id }); }); });
+    return out;
+  }
   function stripHtml(B, active) {
+    var pend = pendingNew(B);
     var h = '<div style="margin-bottom:14px">';
     ORDER.forEach(function (k) {
       var b = B[k], col = STEP_COLOR[k];
@@ -335,6 +350,7 @@
       var st = isActive ? 'background:' + col + '1f;border:1px solid ' + col + '66;color:' + col : 'border:1px solid transparent;color:' + (finished ? '#64748b' : '#94a3b8');
       h += '<button data-a="bucket" data-id="' + k + '" title="' + (finished ? STEP_NAME[k] + ' is done' : 'Jump to ' + STEP_NAME[k]) + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 9px;margin-bottom:3px;border-radius:7px;font:inherit;font-size:13px;text-align:left;cursor:' + (finished ? 'default' : 'pointer') + ';background:none;' + st + '">' +
         '<span style="width:12px;text-align:center">' + icon + '</span><span>' + STEP_NAME[k] + '</span>' +
+        (function () { var n = pend.filter(function (p) { return p.step === k; }).length; return n ? '<span style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:#f8717122;color:#f87171;border:1px solid #f8717166">+' + n + ' new</span>' : ''; })() +
         '<span style="margin-left:auto;font-family:Consolas,monospace;font-size:12px">' + count + '</span></button>';
     });
     return h + '</div>';
@@ -346,11 +362,26 @@
     var B = buckets(), seen = S.seen[TODAY] || [];
     var focus = S.focus && S.focus.day === TODAY ? S.focus.step : null;
     if (focus && !B[focus].next) { focus = null; delete S.focus; save(); }
-    var active = focus || ORDER.filter(function (k) { return B[k].next; })[0] || null;
-    var banner = (lastActive && lastActive !== active && B[lastActive].total && !B[lastActive].next) ? STEP_NAME[lastActive] + ' done.' : '';
+    var pend = pendingNew(B), stay = null;
+    // the card you're on stays put, even if new tickets arrive in an earlier bucket
+    if (S.cur && S.cur.day === TODAY) ORDER.some(function (k) { return B[k].items.some(function (x) { if (x.item.id === S.cur.id && !x.done) { stay = { step: k, entry: x }; return true; } return false; }); });
+    var normal = focus || ORDER.filter(function (k) { return B[k].next; })[0] || null;
+    function earlier(p, step) { return step && ORDER.indexOf(p.step) < ORDER.indexOf(step); }
+    // new arrivals in an earlier bucket than where you are go next (after the card you're on)
+    var early = pend.filter(function (p) { return earlier(p, normal); });
+    var active = stay ? stay.step : (early.length ? early[0].step : normal);
+    if (!stay && early.length && focus) { delete S.focus; }
+    var banner = (!stay && lastActive && lastActive !== active && B[lastActive].total && !B[lastActive].next) ? STEP_NAME[lastActive] + ' done.' : '';
     lastActive = active;
     var h = '';
     if (banner) h += '<div style="background:#34d39922;color:#34d399;border-radius:7px;padding:9px 11px;font-size:13px;margin-bottom:10px">\u2713 ' + esc(banner) + (active ? ' On to ' + STEP_NAME[active] + '.' : '') + '</div>';
+    var waitingNew = stay ? pend.filter(function (p) { return p.id !== stay.entry.item.id && earlier(p, stay.step); }) : [];
+    if (stay && waitingNew.length) {
+      var byStep = {}; waitingNew.forEach(function (p) { byStep[p.step] = (byStep[p.step] || 0) + 1; });
+      h += '<div style="display:flex;align-items:center;gap:8px;background:#f8717118;border:1px solid #f8717155;color:#fca5a5;border-radius:7px;padding:8px 10px;font-size:13px;margin-bottom:10px"><span style="flex:1">' +
+        esc(Object.keys(byStep).map(function (k) { return byStep[k] + ' new in ' + STEP_NAME[k]; }).join(', ')) + '. Up after this card.</span>' +
+        '<button data-a="gonew" style="background:none;border:1px solid #f87171;color:#f87171;border-radius:6px;padding:3px 9px;font:inherit;font-size:12px;font-weight:600;cursor:pointer">Go now</button></div>';
+    }
     h += stripHtml(B, active);
     if (!active) {
       var hidden = {}; tickets.forEach(function (t) { if (['3', '4', '5', '6', '7', '8'].indexOf(t.lane) >= 0) hidden[LANES[t.lane]] = (hidden[LANES[t.lane]] || 0) + 1; });
@@ -360,11 +391,12 @@
       if (tt) h += '<div style="font-size:12px;color:#34d399;margin-bottom:12px">' + plural(tt, 'ticket') + ' updated today.</div>';
       var hk = Object.keys(hidden);
       if (hk.length) h += '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Not in the walk: ' + hk.map(function (k) { return hidden[k] + ' ' + k; }).join(' \u00b7 ') + '</div>';
-      h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('restart', 'Start over') + btn('tab-wrap', 'Wrap up the day', GO) + '</div>';
+      h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('fresh', '\u21ba Start a fresh pass') + btn('tab-wrap', 'Wrap up the day', GO) + '</div>';
       h += '<div style="margin-top:18px">' + parkedLink() + '</div>';
       body.innerHTML = h; return;
     }
-    var cur = B[active].next;
+    var cur = stay ? stay.entry : (early.length ? B[active].items.filter(function (x) { return x.item.id === early[0].id; })[0] : B[active].next);
+    S.cur = { day: TODAY, id: cur.item.id }; save();
     var it = cur.item, col = STEP_COLOR[cur.step], isTicket = !isItem(it);
     h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col + ';text-transform:uppercase;margin-bottom:8px">' +
       (cur.step === 'prioritize' ? 'Pick this up for 30 min' : STEP_NAME[cur.step]) + '</div>';
@@ -401,7 +433,8 @@
         '<div id="snnParkMsg" style="font-size:12px;margin-top:6px;min-height:1em"></div>';
     }
     h += '<div style="display:flex;justify-content:space-between;margin-top:22px">' +
-      (seen.length ? btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') : '<span></span>') + parkedLink() + '</div>';
+      (seen.length ? btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') : '<span></span>') + parkedLink() + '</div>' +
+      '<div style="margin-top:6px">' + btn('fresh', '\u21ba Start a fresh pass', 'border:none;background:none;color:#64748b;padding:4px 0;font-weight:400;font-size:12px') + '</div>';
     body.innerHTML = h;
   }
   function parkedLink() {
@@ -542,7 +575,8 @@
     var title = t.value.trim(), label = l.value.trim();
     if (!title) { document.getElementById('snnAddMsg').textContent = 'Type what the item is first.'; document.getElementById('snnAddMsg').style.color = '#f87171'; return; }
     var laneSel = document.getElementById('snnLane');
-    S.adhoc.push({ id: uid(), title: title, label: label, lane: laneSel ? laneSel.value : 'initial', added: TODAY, done: null });
+    var nid = uid(); if (S.known && S.known.day === TODAY) S.known.ids.push(nid);
+    S.adhoc.push({ id: nid, title: title, label: label, lane: laneSel ? laneSel.value : 'initial', added: TODAY, done: null });
     if (label && S.labels.indexOf(label) < 0) S.labels.push(label);
     save(); renderAdd();
     document.getElementById('snnAddMsg').textContent = 'Added.';
@@ -826,12 +860,12 @@
     var t = byId(id), a = t ? null : itemById(id); if (!t && !a) return;
     if (a) {
       if (daysUntil(ymd + ' 17:00:00') <= PARK_LEAD) { parkMsg('Pick a date more than ' + PARK_LEAD + ' days out, or it stays on your list.', true); return; }
-      a.due = ymd + ' 17:00:00'; S.parked = S.parked || {}; S.parked[id] = ymd; save(); render(); return;
+      a.due = ymd + ' 17:00:00'; S.parked = S.parked || {}; S.parked[id] = ymd; delete S.cur; save(); render(); return;
     }
     if (daysUntil(ymd + ' 17:00:00') <= PARK_LEAD) { parkMsg('Pick a date more than ' + PARK_LEAD + ' days out, or it stays on your list.', true); return; }
     parkMsg('Setting due date\u2026');
     setDue(t, ymd).then(function () {
-      t.due = ymd + ' 17:00:00'; S.parked = S.parked || {}; S.parked[id] = ymd; save(); render();
+      t.due = ymd + ' 17:00:00'; S.parked = S.parked || {}; S.parked[id] = ymd; delete S.cur; save(); render();
     }).catch(function (e) { parkMsg('Couldn\u2019t set the due date (' + e.message + '). Nothing changed.', true); });
   }
   function unpark(id, el) {
@@ -891,7 +925,14 @@
     var el = e.target.closest('[data-a]'); if (!el) return;
     var a = el.getAttribute('data-a'), id = el.getAttribute('data-id');
     var seen = S.seen[TODAY];
+    if (['next', 'back', 'skip', 'adone', 'bucket', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
     switch (a) {
+      case 'gonew': var pn = pendingNew(buckets()); delete S.focus; lastActive = null; if (pn.length) S.cur = { day: TODAY, id: pn[0].id }; save(); render(); break;
+      case 'fresh':
+        var prevSeen = (S.seen[TODAY] || []).slice(), prevFocus = S.focus;
+        S.seen[TODAY] = []; delete S.focus; lastActive = null; if (S.newIds) S.newIds.ids = []; save(); render();
+        showUndo('Fresh pass started. Tickets you updated today still count as done.', function () { S.seen[TODAY] = prevSeen; if (prevFocus) S.focus = prevFocus; save(); });
+        break;
       case 'close': ov.remove(); clearInterval(placeTimer); clearInterval(autoTimer); break;
       case 'collapse': S.collapsed = true; save(); place(); break;
       case 'expand': S.collapsed = false; save(); place(); break;
