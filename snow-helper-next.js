@@ -174,11 +174,13 @@
   }
   function pomoStart(id) { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} S.pomo = { id: id, phase: 'work', end: Date.now() + POMO_WORK * 60000 }; save(); pomoTick(); render(); }
   function pomoStop() { delete S.pomo; save(); pomoTick(); render(); }
+  function pomoPause() { var p = S.pomo; if (!p || p.paused != null) return; p.paused = Math.max(0, p.end - Date.now()); save(); pomoTick(); render(); }
+  function pomoResume() { var p = S.pomo; if (!p || p.paused == null) return; p.end = Date.now() + p.paused; delete p.paused; save(); pomoTick(); render(); }
   function mmss(ms) { var t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + pad(t % 60); }
   function pomoTick() {
     if (!document.body.contains(ov)) { clearInterval(pomoTimer); return; }
     var el = document.getElementById('snnTimer'), st = document.getElementById('snnStripTimer'), p = S.pomo;
-    if (p && Date.now() >= p.end) {
+    if (p && p.paused == null && Date.now() >= p.end) {
       if (p.phase === 'work') { chime(3); S.pomo = { id: p.id, phase: 'break', end: Date.now() + POMO_BREAK * 60000 }; save(); showUndo('25 minutes done. Take a 5 minute break.', null); }
       else { chime(2); delete S.pomo; save(); showUndo('Break\u2019s over. Ready for the next one?', null); }
       p = S.pomo; if (tab === 'next') render();
@@ -186,10 +188,11 @@
     var t0 = document.getElementById('snnTitle0');
     if (!p) { el.style.display = 'none'; st.textContent = ''; t0.style.display = 'inline'; return; }
     t0.style.display = 'none'; // the countdown takes the title's spot so the header buttons still fit
-    var work = p.phase === 'work', left = mmss(p.end - Date.now());
-    el.style.display = 'inline'; el.textContent = (work ? '\u25b6 ' : '\u2615 ') + left;
+    var work = p.phase === 'work', paused = p.paused != null, left = mmss(paused ? p.paused : p.end - Date.now());
+    el.style.display = 'inline'; el.textContent = (paused ? '\u23f8 ' : work ? '\u25b6 ' : '\u2615 ') + left;
     el.style.background = work ? '#fbbf2422' : '#34d39922'; el.style.color = work ? '#fbbf24' : '#34d399'; el.style.border = '1px solid ' + (work ? '#fbbf2466' : '#34d39966');
-    st.textContent = ' \u00b7 ' + (work ? '' : 'break ') + left;
+    st.textContent = ' \u00b7 ' + (paused ? 'paused ' : work ? '' : 'break ') + left;
+    waitTick();
   }
   var pomoTimer = setInterval(pomoTick, 1000);
   window.addEventListener('resize', place);
@@ -228,7 +231,9 @@
           r.forEach(function (n) {
             var t = byId(v(n.element_id)); if (!t) return;
             if (!t.lastNote) { t.lastNote = v(n.sys_created_on); t.noteSrc = 'notes table'; }
-            if (!t.myLast && meU && String(v(n.sys_created_by)).toLowerCase() === meU.toLowerCase()) t.myLast = v(n.sys_created_on);
+            var byMe = meU && String(v(n.sys_created_by)).toLowerCase() === meU.toLowerCase();
+            if (!t.myLast && byMe) t.myLast = v(n.sys_created_on);
+            if (!t.otherLast && meU && !byMe) t.otherLast = v(n.sys_created_on);
           });
         })
         .catch(function () {})
@@ -265,6 +270,10 @@
           if (me && !t.myLast) {
             var mine = parseJournal(text, '').filter(function (e) { return e.author.toLowerCase() === me.toLowerCase(); }).sort(function (a, b) { return b.when - a.when; })[0];
             if (mine) t.myLast = mine.when.toISOString().slice(0, 19).replace('T', ' ');
+          }
+          if (me && !t.otherLast) {
+            var theirs = parseJournal(text, '').filter(function (e) { return e.author.toLowerCase() !== me.toLowerCase(); }).sort(function (a, b) { return b.when - a.when; })[0];
+            if (theirs) t.otherLast = theirs.when.toISOString().slice(0, 19).replace('T', ' ');
           }
         });
       }).catch(function () {});
@@ -310,13 +319,29 @@
     return who + ', added ' + (age ? plural(age, 'day') + ' ago' : 'today');
   }
   function prioRank(t) { var p = parseInt(String(t.priority || '').replace(/\D/g, ''), 10); return isNaN(p) ? 9 : p; }
+  /* Waiting on reply: set a ticket aside for today; it comes back when someone else adds a note/comment,
+     or when the time you picked is up (1 hr / 2 hrs). Tomorrow it's back no matter what. */
+  function waitState(x) {
+    var w = S.wait && S.wait[x.id]; if (!w || w.day !== TODAY) return null;
+    if (x.otherLast && Date.parse(x.otherLast.replace(' ', 'T') + 'Z') > w.since) return { w: w, back: 'reply' };
+    if (w.until && Date.now() >= w.until) return { w: w, back: 'time' };
+    return { w: w, back: null };
+  }
+  function isWaiting(x) { var ws = waitState(x); return !!(ws && !ws.back); }
+  var lastWaitCount = -1;
+  function waitTick() {
+    var n = tickets.concat(S.adhoc).filter(isWaiting).length;
+    if (lastWaitCount >= 0 && n !== lastWaitCount && tab === 'next') keepTyping(render);
+    lastWaitCount = n;
+  }
+  function hm(ms) { var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + pad(m) + (h < 12 ? 'am' : 'pm'); }
   function buildQueue() {
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
     // touched today (a work note or comment from today) stays in its bucket but counts as done
-    var live = tickets.filter(function (t) { return !S.skip[t.id] && !parkedNow(t); });
+    var live = tickets.filter(function (t) { return !S.skip[t.id] && !parkedNow(t) && !isWaiting(t); });
     // your items that are in the walk today (done-today ones stay so counts don't jump)
-    var items = S.adhoc.filter(function (a) { return (!a.done || a.done === TODAY) && S.skip[a.id] !== TODAY && !isParked(a); });
+    var items = S.adhoc.filter(function (a) { return (!a.done || a.done === TODAY) && S.skip[a.id] !== TODAY && !isParked(a) && !isWaiting(a); });
     function itemsIn(l) { return items.filter(function (a) { return itemLane(a) === l; }); }
     // merge two lists that are each already in order; "older first" decides who goes next
     function mergeByAge(ts, tsAge, its) {
@@ -368,6 +393,7 @@
     if (tab === 'wrap') return renderWrap();
     if (tab === 'weekly') return renderWeekly();
     if (tab === 'parked') return renderParked();
+    if (tab === 'waiting') return renderWaiting();
     if (tab === 'help') return renderHelp();
   }
 
@@ -397,6 +423,31 @@
     ORDER.forEach(function (k) { B[k].items.forEach(function (x) { if (!x.done && ids.indexOf(x.item.id) >= 0) out.push({ step: k, id: x.item.id }); }); });
     return out;
   }
+  var openBucket = null, searchQ = '';
+  // search across everything: in-walk tickets/items are pickable; others say why they're not in the walk
+  function searchHtml() {
+    var q2 = searchQ.trim().toLowerCase(); if (!q2) return '';
+    var B = buckets(), inWalk = {};
+    ORDER.forEach(function (k) { B[k].items.forEach(function (x) { inWalk[x.item.id] = k; }); });
+    var all = tickets.concat(S.adhoc.filter(function (a) { return !a.done || a.done === TODAY; }));
+    var hits = all.filter(function (x) { return (isItem(x) ? (x.title + ' ' + (x.label || '')) : (x.number + ' ' + x.sd)).toLowerCase().indexOf(q2) >= 0; }).slice(0, 8);
+    if (!hits.length) return '<div style="font-size:12px;color:#64748b;padding:6px 2px">No match in your tickets.</div>';
+    return hits.map(function (x) {
+      var k = inWalk[x.id], why = k ? STEP_NAME[k] : isWaiting(x) ? 'Waiting on reply' : parkedNow(x) || (isItem(x) && isParked(x)) ? 'Parked until ' + shortDate(x.due) : S.skip[x.id] ? 'Skipped today' : isItem(x) ? (ITEM_LANES.filter(function (l) { return l[0] === itemLane(x); })[0] || ['', ''])[1] : (LANES[x.lane] || 'Not in the walk');
+      var head = '<span style="font-family:Consolas,monospace;color:' + (isItem(x) ? '#67e8f9' : '#60a5fa') + '">' + esc(isItem(x) ? (x.label || 'Item') : x.number) + '</span> <span style="color:#64748b">\u00b7 ' + esc(why) + '</span>';
+      var title = '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(isItem(x) ? x.title : x.sd) + '</div>';
+      if (k) return '<button data-a="pick" data-id="' + esc(x.id) + '" style="display:block;width:100%;padding:6px 8px;margin-bottom:3px;border:1px solid #2a2a3e;border-radius:6px;background:#1a1a2e;color:#cbd5e1;font:inherit;font-size:12px;text-align:left;cursor:pointer">' + head + title + '</button>';
+      return '<div style="padding:6px 8px;margin-bottom:3px;border:1px dashed #2a2a3e;border-radius:6px;color:#94a3b8;font-size:12px">' + head +
+        (!isItem(x) ? ' <a href="' + esc(BASE + '/' + x.table + '.do?sys_id=' + x.id) + '" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none">open \u2197</a>' : '') +
+        (isWaiting(x) ? ' ' + btn('unwait', 'Back now', 'border:none;background:none;color:#67e8f9;padding:0;font-size:12px', x.id) : '') + title + '</div>';
+    }).join('');
+  }
+  function wireSearch() {
+    var inp2 = document.getElementById('snnSearch'); if (!inp2) return;
+    inp2.value = searchQ;
+    inp2.addEventListener('input', function () { searchQ = inp2.value; document.getElementById('snnSearchRes').innerHTML = searchHtml(); });
+    inp2.addEventListener('keydown', function (e) { if (e.key === 'Escape') { searchQ = ''; inp2.value = ''; document.getElementById('snnSearchRes').innerHTML = ''; inp2.blur(); } });
+  }
   function stripHtml(B, active) {
     var pend = pendingNew(B);
     var h = '<div style="margin-bottom:14px">';
@@ -407,10 +458,23 @@
       var icon = finished ? '\u2713' : (isActive ? '\u25cf' : '\u25cb');
       var count = !b.total ? 'none' : finished ? 'done' : isActive ? (k === 'prioritize' ? 'next up' : (b.done + 1) + ' of ' + b.total) : (k === 'prioritize' ? '' : String(b.total - b.done));
       var st = isActive ? 'background:' + col + '1f;border:1px solid ' + col + '66;color:' + col : 'border:1px solid transparent;color:' + (finished ? '#64748b' : '#94a3b8');
-      h += '<button data-a="bucket" data-id="' + k + '" title="' + (finished ? STEP_NAME[k] + ' is done' : 'Jump to ' + STEP_NAME[k]) + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 9px;margin-bottom:3px;border-radius:7px;font:inherit;font-size:13px;text-align:left;cursor:' + (finished ? 'default' : 'pointer') + ';background:none;' + st + '">' +
+      h += '<button data-a="bucket" data-id="' + k + '" title="' + (openBucket === k ? 'Hide the list' : 'Show the tickets in ' + STEP_NAME[k]) + '" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 9px;margin-bottom:3px;border-radius:7px;font:inherit;font-size:13px;text-align:left;cursor:pointer;background:none;' + st + '">' +
         '<span style="width:12px;text-align:center">' + icon + '</span><span>' + STEP_NAME[k] + '</span>' +
         (function () { var n = pend.filter(function (p) { return p.step === k; }).length; return n ? '<span style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:#f8717122;color:#f87171;border:1px solid #f8717166">+' + n + ' new</span>' : ''; })() +
-        '<span style="margin-left:auto;font-family:Consolas,monospace;font-size:12px">' + count + '</span></button>';
+        '<span style="margin-left:auto;font-family:Consolas,monospace;font-size:12px">' + count + '</span>' +
+        '<span style="font-size:10px;color:#64748b;margin-left:4px">' + (openBucket === k ? '\u25b4' : '\u25be') + '</span></button>';
+      if (openBucket === k) {
+        h += '<div style="margin:0 0 8px 20px;border-left:1px solid #2a2a3e;padding-left:8px;max-height:260px;overflow-y:auto">';
+        if (!b.items.length) h += '<div style="font-size:12px;color:#64748b;padding:4px 0">Nothing here.</div>';
+        b.items.forEach(function (x) {
+          var isCur = S.cur && S.cur.id === x.item.id, ic = x.done ? '\u2713' : isCur ? '\u25cf' : '\u25cb';
+          h += '<button data-a="pick" data-id="' + esc(x.item.id) + '" title="Work on this one" style="display:flex;gap:7px;align-items:baseline;width:100%;padding:4px 4px;border:none;border-radius:5px;background:' + (isCur ? col + '22' : 'none') + ';color:' + (x.done ? '#64748b' : '#cbd5e1') + ';font:inherit;font-size:12px;text-align:left;cursor:pointer">' +
+            '<span style="width:10px;flex:none">' + ic + '</span>' +
+            '<span style="flex:none;font-family:Consolas,monospace;color:' + (x.done ? '#64748b' : isItem(x.item) ? '#67e8f9' : '#60a5fa') + '">' + esc(isItem(x.item) ? (x.item.label || 'Item') : x.item.number) + '</span>' +
+            '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (x.done ? ';text-decoration:line-through' : '') + '">' + esc(isItem(x.item) ? x.item.title : x.item.sd) + '</span></button>';
+        });
+        h += '</div>';
+      }
     });
     return h + '</div>';
   }
@@ -423,7 +487,7 @@
     if (focus && !B[focus].next) { focus = null; delete S.focus; save(); }
     var pend = pendingNew(B), stay = null;
     // the card you're on stays put, even if new tickets arrive in an earlier bucket
-    if (S.cur && S.cur.day === TODAY) ORDER.some(function (k) { return B[k].items.some(function (x) { if (x.item.id === S.cur.id && !x.done) { stay = { step: k, entry: x }; return true; } return false; }); });
+    if (S.cur && S.cur.day === TODAY) ORDER.some(function (k) { return B[k].items.some(function (x) { if (x.item.id === S.cur.id && (!x.done || S.cur.pick)) { stay = { step: k, entry: x }; return true; } return false; }); });
     var normal = focus || ORDER.filter(function (k) { return B[k].next; })[0] || null;
     function earlier(p, step) { return step && ORDER.indexOf(p.step) < ORDER.indexOf(step); }
     // new arrivals in an earlier bucket than where you are go next (after the card you're on)
@@ -441,11 +505,13 @@
         esc(Object.keys(byStep).map(function (k) { return byStep[k] + ' new in ' + STEP_NAME[k]; }).join(', ')) + '. Up after this card.</span>' +
         '<button data-a="gonew" style="background:none;border:1px solid #f87171;color:#f87171;border-radius:6px;padding:3px 9px;font:inherit;font-size:12px;font-weight:600;cursor:pointer">Go now</button></div>';
     }
+    h += '<input id="snnSearch" placeholder="Find a ticket: number or words" autocomplete="off" style="width:100%;box-sizing:border-box;padding:7px 10px;margin-bottom:6px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:7px;color:#e2e8f0;font:inherit;font-size:13px;outline:none">' +
+      '<div id="snnSearchRes" style="margin-bottom:8px">' + searchHtml() + '</div>';
     var qo = queueOn(), qAuto = !(S.queue && S.queue.day === TODAY);
     h += '<button data-a="queue" title="Include your group\u2019s unassigned tickets" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:10px;padding:6px 9px;border-radius:7px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:12px;cursor:pointer;text-align:left">' +
       '<span style="display:inline-block;width:28px;height:16px;border-radius:999px;position:relative;background:' + (qo ? '#fbbf24' : '#2a2a3e') + '"><span style="position:absolute;top:2px;left:' + (qo ? '14px' : '2px') + ';width:12px;height:12px;border-radius:50%;background:#0f0f1a"></span></span>' +
-      '<span style="color:' + (qo ? '#fbbf24' : '#94a3b8') + '">Group queue ' + (qo ? 'on' : 'off') + '</span>' +
-      '<span style="margin-left:auto;color:#64748b">' + (qAuto ? (qo ? 'Wednesday' : 'auto on Wednesdays') : 'just for today') + '</span></button>';
+      '<span style="white-space:nowrap;color:' + (qo ? '#fbbf24' : '#94a3b8') + '">Group queue ' + (qo ? 'on' : 'off') + '</span>' +
+      '<span style="margin-left:auto;color:#64748b;white-space:nowrap">' + (qAuto ? (qo ? 'Wednesday' : 'auto on Wed') : 'just for today') + '</span></button>';
     h += stripHtml(B, active);
     if (!active) {
       var hidden = {}; tickets.forEach(function (t) { if (['3', '4', '5', '6', '7', '8'].indexOf(t.lane) >= 0) hidden[LANES[t.lane]] = (hidden[LANES[t.lane]] || 0) + 1; });
@@ -456,8 +522,8 @@
       var hk = Object.keys(hidden);
       if (hk.length) h += '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Not in the walk: ' + hk.map(function (k) { return hidden[k] + ' ' + k; }).join(' \u00b7 ') + '</div>';
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('fresh', '\u21ba Start a fresh pass') + btn('tab-wrap', 'Wrap up the day', GO) + '</div>';
-      h += '<div style="margin-top:18px">' + parkedLink() + '</div>';
-      body.innerHTML = h; return;
+      h += '<div style="margin-top:18px">' + waitingLink() + '<br>' + parkedLink() + '</div>';
+      body.innerHTML = h; wireSearch(); return;
     }
     var cur = stay ? stay.entry : (early.length ? B[active].items.filter(function (x) { return x.item.id === early[0].id; })[0] : B[active].next);
     S.cur = { day: TODAY, id: cur.item.id }; save();
@@ -473,6 +539,8 @@
       h += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin:8px 0 10px">' + esc(it.title) + '</div>';
     }
     h += '<div style="font-size:13px;color:#cbd5e1"' + (isTicket && it.noteSrc ? ' title="Last update read from the ' + it.noteSrc + '"' : '') + '>' + esc(cur.why) + '</div>';
+    var wsb = waitState(it);
+    if (wsb && wsb.back) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">' + (wsb.back === 'reply' ? 'They replied. Back on your list.' : 'Waiting time\u2019s up. Back on your list.') + '</div>';
     if (S.parked && S.parked[it.id] && it.due && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
     if (isTicket) h += '<div style="font-size:12px;color:#64748b;margin-top:6px">' + esc([LANES[it.lane], it.priority].filter(Boolean).join(' \u00b7 ')) +
       (it.unassigned ? '<div style="margin-top:6px"><span style="white-space:nowrap;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:#fbbf2422;color:#fbbf24;border:1px solid #fbbf2455">Unassigned \u00b7 group queue</span></div>' : '') + '</div>';
@@ -483,10 +551,19 @@
     h += btn('next', 'Next \u2192', null, it.id) + '</div>';
     if (cur.step === 'prioritize' || cur.step === 'top') {
       var mine = S.pomo && S.pomo.id === it.id;
-      if (mine) h += '<div style="display:flex;align-items:center;gap:8px;margin:-2px 0 10px;font-size:12px;color:' + (S.pomo.phase === 'work' ? '#fbbf24' : '#34d399') + '">' + (S.pomo.phase === 'work' ? 'Focus session running' : 'On a break') + btn('pomostop', '\u25a0 Stop timer', 'border:1px solid #2a2a3e;background:none;color:#94a3b8;padding:4px 9px;font-size:12px', it.id) + '</div>';
+      var small = 'border:1px solid #2a2a3e;background:none;color:#94a3b8;padding:4px 9px;font-size:12px';
+      if (mine) h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-2px 0 10px;font-size:12px;color:' + (S.pomo.phase === 'work' ? '#fbbf24' : '#34d399') + '">' +
+        (S.pomo.paused != null ? 'Paused' : S.pomo.phase === 'work' ? 'Focus session running' : 'On a break') +
+        (S.pomo.paused != null ? btn('pomoresume', '\u25b6 Resume', 'border:1px solid #fbbf24;background:#fbbf2422;color:#fbbf24;padding:4px 9px;font-size:12px', it.id) : btn('pomopause', '\u23f8 Pause', small, it.id)) +
+        btn('pomostop', '\u25a0 Stop', small, it.id) + '</div>';
       else h += '<div style="margin:-2px 0 10px">' + btn('pomostart', '\u25b6 Start 25 min', 'border:1px solid #fbbf24;background:#fbbf2422;color:#fbbf24', it.id) + (S.pomo ? '<span style="font-size:12px;color:#64748b;margin-left:8px">(replaces the running timer)</span>' : '') + '</div>';
     }
     if (isTicket) h += '<div id="snnFindMsg" style="font-size:12px;margin:-4px 0 8px;min-height:0"></div>';
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">' + btn('waitopen', '\u23f3 Waiting on reply', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id) +
+      '<span id="snnWaitOpts" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">' +
+      btn('waitset', isTicket ? 'Until they reply' : 'Rest of today', 'border:1px solid #67e8f9;background:none;color:#67e8f9;padding:5px 9px;font-size:12px', it.id).replace('data-a="waitset"', 'data-a="waitset" data-h="0"') +
+      btn('waitset', '1 hr', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:5px 9px;font-size:12px', it.id).replace('data-a="waitset"', 'data-a="waitset" data-h="1"') +
+      btn('waitset', '2 hrs', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:5px 9px;font-size:12px', it.id).replace('data-a="waitset"', 'data-a="waitset" data-h="2"') + '</span></div>';
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btn('skip', 'Skip for today', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id);
     h += btn('pin', (S.pin && S.pin[it.id]) ? '\u2b07 Not important' : '\u2b06 Important', 'border:1px solid #2a2a3e;background:none;color:' + ((S.pin && S.pin[it.id]) ? '#f87171' : '#94a3b8'), it.id);
     h += btn('quick', S.quick[it.id] ? '\u2605 Quick win (untag)' : '\u2606 Quick win', 'border:1px solid #2a2a3e;background:none;color:' + (S.quick[it.id] ? '#fb923c' : '#94a3b8'), it.id);
@@ -503,8 +580,29 @@
         '<div id="snnParkMsg" style="font-size:12px;margin-top:6px;min-height:1em"></div>';
     }
     h += '<div style="display:flex;justify-content:space-between;margin-top:22px">' +
-      (seen.length ? btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') : '<span></span>') + parkedLink() + '</div>' +
+      (seen.length ? btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') : '<span></span>') + '<span style="display:flex;flex-direction:column;align-items:flex-end">' + waitingLink() + parkedLink() + '</span></div>' +
       '<div style="margin-top:6px">' + btn('fresh', '\u21ba Start a fresh pass', 'border:none;background:none;color:#64748b;padding:4px 0;font-weight:400;font-size:12px') + '</div>';
+    body.innerHTML = h; wireSearch();
+  }
+  function waitingLink() {
+    var n = tickets.concat(S.adhoc).filter(isWaiting).length;
+    return n ? btn('tab-waiting', n + ' waiting on reply \u2192', 'border:none;background:none;color:#67e8f9;padding:4px 0') : '';
+  }
+  function renderWaiting() {
+    document.getElementById('snnSub').textContent = '';
+    var list = tickets.concat(S.adhoc).filter(isWaiting);
+    var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 12px') +
+      '<div style="font-size:16px;font-weight:600;margin-bottom:4px">Waiting on reply</div>' +
+      '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Each one comes back when someone else adds a note or comment, or when its time is up. Tomorrow they\u2019re all back.</div>';
+    if (!list.length) h += '<div style="color:#64748b">Nothing waiting.</div>';
+    list.forEach(function (x) {
+      var w = S.wait[x.id];
+      h += '<div style="padding:9px 0;border-top:1px solid #2a2a3e">' +
+        '<div style="font-size:12px">' + (isItem(x) ? '<span style="color:#67e8f9">' + esc(x.label || 'Your item') + '</span>' : '<span style="font-family:Consolas,monospace;color:#60a5fa">' + esc(x.number) + '</span>') +
+        '<span style="float:right;color:#94a3b8">since ' + hm(w.since) + (w.until ? ' \u00b7 back by ' + hm(w.until) : '') + '</span></div>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:3px"><span style="flex:1;font-size:13px">' + esc(isItem(x) ? x.title : x.sd) + '</span>' +
+        btn('unwait', 'Back now', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:4px 9px;font-size:12px', x.id) + '</div></div>';
+    });
     body.innerHTML = h;
   }
   function parkedLink() {
@@ -996,11 +1094,23 @@
     var el = e.target.closest('[data-a]'); if (!el) return;
     var a = el.getAttribute('data-a'), id = el.getAttribute('data-id');
     var seen = S.seen[TODAY];
-    if (['next', 'back', 'skip', 'adone', 'bucket', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
+    if (['next', 'back', 'skip', 'adone', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
+    if (['next', 'skip', 'adone'].indexOf(a) >= 0 && S.wait && id && S.wait[id] && waitState(byId(id) || itemById(id) || { id: id }) && waitState(byId(id) || itemById(id) || { id: id }).back) delete S.wait[id];
     switch (a) {
       case 'queue': S.queue = { day: TODAY, on: !queueOn() }; delete S.cur; S.known = null; save(); loadAll(); break;
       case 'pomostart': pomoStart(id); break;
       case 'pomostop': pomoStop(); break;
+      case 'waitopen': var wo = document.getElementById('snnWaitOpts'); wo.style.display = wo.style.display === 'none' ? 'inline-flex' : 'none'; break;
+      case 'waitset':
+        S.wait = S.wait || {}; var wh = +el.getAttribute('data-h'), prevW = S.wait[id];
+        S.wait[id] = { day: TODAY, since: Date.now(), until: wh ? Date.now() + wh * 3600000 : 0 };
+        delete S.cur; save(); render();
+        showUndo(wh ? 'Set aside. Back by ' + hm(S.wait[id].until) + ' or when they reply.' : 'Set aside until they reply.', function () { if (prevW) S.wait[id] = prevW; else delete S.wait[id]; save(); });
+        break;
+      case 'unwait': if (S.wait) delete S.wait[id]; S.cur = { day: TODAY, id: id, pick: true }; save(); setTab('next'); break;
+      case 'tab-waiting': setTab('waiting'); break;
+      case 'pomopause': pomoPause(); break;
+      case 'pomoresume': pomoResume(); break;
       case 'pomoview': setTab('next'); break;
       case 'gonew': var pn = pendingNew(buckets()); delete S.focus; lastActive = null; if (pn.length) S.cur = { day: TODAY, id: pn[0].id }; save(); render(); break;
       case 'fresh':
@@ -1026,7 +1136,8 @@
       case 'find': findOnPage(id); break;
       case 'tab-help': setTab(tab === 'help' ? 'next' : 'help'); break;
       case 'restart': S.seen[TODAY] = []; delete S.focus; lastActive = null; save(); render(); break;
-      case 'bucket': var bb = buckets()[id]; if (bb && bb.next) { S.focus = { day: TODAY, step: id }; lastActive = id; save(); render(); } break;
+      case 'bucket': openBucket = openBucket === id ? null : id; render(); break;
+      case 'pick': S.cur = { day: TODAY, id: id, pick: true }; openBucket = null; searchQ = ''; lastActive = null; save(); render(); body.scrollTop = 0; break;
       case 'adone': var ad1 = S.adhoc.filter(function (x) { return x.id === id; })[0]; if (ad1) { ad1.done = TODAY; save(); render(); showUndo('Marked \u201c' + ad1.title + '\u201d done.', function () { ad1.done = null; save(); }); } break;
       case 'pin': S.pin = S.pin || {}; if (S.pin[id]) delete S.pin[id]; else { S.pin[id] = new Date().toISOString(); S.focus = { day: TODAY, step: 'top' }; lastActive = 'top'; } save(); render(); break;
       case 'areopen': S.adhoc.forEach(function (x) { if (x.id === id) x.done = null; }); save(); render(); break;
