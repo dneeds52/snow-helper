@@ -215,14 +215,16 @@
   function loadAll(silent) {
     if (loading) return; loading = true; lastLoad = Date.now();
     if (!silent) { loaded = false; loadErr = ''; render(); }
-    var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date,assigned_to';
+    var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date,assigned_to,parent';
     Promise.all(TABLES.map(function (t) {
       return q(t, listQuery(), fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; }).catch(function () { return []; });
     })).then(function (sets) {
       tickets = [].concat.apply([], sets).map(function (x) {
         return { id: v(x.sys_id), table: x._table, number: dv(x.number), sd: dv(x.short_description), order: v(x.order),
-                 lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), unassigned: !v(x.assigned_to), due: v(x.due_date) || '', lastNote: null, sla: null };
+                 lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), unassigned: !v(x.assigned_to), due: v(x.due_date) || '', lastNote: null, sla: null,
+                 stateLabel: dv(x.state), parent: v(x.parent) || '' };
       });
+      groupChanges();
       if (!tickets.length) return;
       var ids = tickets.map(function (t) { return t.id; });
       var meU = myUserName();
@@ -291,6 +293,18 @@
     }
     return best ? new Date(best).toISOString().slice(0, 19).replace('T', ' ') : null;
   }
+  /* A change whose Parent ticket is also in your list rides along on that ticket's card instead of being its own card */
+  function groupChanges() {
+    tickets.forEach(function (t) { t.changes = []; t.groupedUnder = null; });
+    tickets.forEach(function (c) {
+      if (c.table !== 'change_request' || !c.parent) return;
+      var par = byId(c.parent);
+      if (par && par.table !== 'change_request') { c.groupedUnder = par.id; par.changes.push(c); }
+    });
+  }
+  function grouped(t) { return !!(t && t.groupedUnder); }
+  // updating the ticket OR its linked change today counts for the pair
+  function touchedPair(t) { return touchedToday(t) || (t.changes || []).some(touchedToday); }
   function byId(id) { for (var i = 0; i < tickets.length; i++) if (tickets[i].id === id) return tickets[i]; return null; }
 
   /* ---------------- the "what's next" order (your Triage Process Guide) ---------------- */
@@ -339,7 +353,7 @@
     var out = [], used = {};
     function push(step, item, why) { if (used[item.id]) return; used[item.id] = 1; out.push({ step: step, item: item, why: why }); }
     // touched today (a work note or comment from today) stays in its bucket but counts as done
-    var live = tickets.filter(function (t) { return !S.skip[t.id] && !parkedNow(t) && !isWaiting(t); });
+    var live = tickets.filter(function (t) { return !grouped(t) && !S.skip[t.id] && !parkedNow(t) && !isWaiting(t); });
     // your items that are in the walk today (done-today ones stay so counts don't jump)
     var items = S.adhoc.filter(function (a) { return (!a.done || a.done === TODAY) && S.skip[a.id] !== TODAY && !isParked(a) && !isWaiting(a); });
     function itemsIn(l) { return items.filter(function (a) { return itemLane(a) === l; }); }
@@ -401,7 +415,7 @@
   var lastActive = null;
   function buckets() {
     var queue = buildQueue(), seen = S.seen[TODAY] || [], B = {};
-    queue.forEach(function (x) { x.done = seen.indexOf(x.item.id) >= 0 || (isItem(x.item) ? x.item.done === TODAY : touchedToday(x.item)); });
+    queue.forEach(function (x) { x.done = seen.indexOf(x.item.id) >= 0 || (isItem(x.item) ? x.item.done === TODAY : touchedPair(x.item)); });
     ORDER.forEach(function (k) {
       var items = queue.filter(function (x) { return x.step === k; });
       var done = items.filter(function (x) { return x.done; }).length;
@@ -433,6 +447,7 @@
     var hits = all.filter(function (x) { return (isItem(x) ? (x.title + ' ' + (x.label || '')) : (x.number + ' ' + x.sd)).toLowerCase().indexOf(q2) >= 0; }).slice(0, 8);
     if (!hits.length) return '<div style="font-size:12px;color:#64748b;padding:6px 2px">No match in your tickets.</div>';
     return hits.map(function (x) {
+      if (grouped(x)) { var gp = byId(x.groupedUnder); return '<button data-a="pick" data-id="' + esc(gp.id) + '" style="display:block;width:100%;padding:6px 8px;margin-bottom:3px;border:1px solid #2a2a3e;border-radius:6px;background:#1a1a2e;color:#cbd5e1;font:inherit;font-size:12px;text-align:left;cursor:pointer"><span style="font-family:Consolas,monospace;color:#60a5fa">' + esc(x.number) + '</span> <span style="color:#64748b">\u00b7 with ' + esc(gp.number) + '</span><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.sd) + '</div></button>'; }
       var k = inWalk[x.id], why = k ? STEP_NAME[k] : isWaiting(x) ? 'Waiting on reply' : parkedNow(x) || (isItem(x) && isParked(x)) ? 'Parked until ' + shortDate(x.due) : S.skip[x.id] ? 'Skipped today' : isItem(x) ? (ITEM_LANES.filter(function (l) { return l[0] === itemLane(x); })[0] || ['', ''])[1] : (LANES[x.lane] || 'Not in the walk');
       var head = '<span style="font-family:Consolas,monospace;color:' + (isItem(x) ? '#67e8f9' : '#60a5fa') + '">' + esc(isItem(x) ? (x.label || 'Item') : x.number) + '</span> <span style="color:#64748b">\u00b7 ' + esc(why) + '</span>';
       var title = '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(isItem(x) ? x.title : x.sd) + '</div>';
@@ -539,6 +554,13 @@
       h += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin:8px 0 10px">' + esc(it.title) + '</div>';
     }
     h += '<div style="font-size:13px;color:#cbd5e1"' + (isTicket && it.noteSrc ? ' title="Last update read from the ' + it.noteSrc + '"' : '') + '>' + esc(cur.why) + '</div>';
+    if (isTicket && it.changes && it.changes.length) it.changes.forEach(function (c) {
+      h += '<div style="margin-top:8px;padding:6px 8px;border:1px solid #2a2a3e;border-radius:6px;font-size:12px;color:#cbd5e1">Linked change: ' +
+        '<a href="' + esc(BASE + '/change_request.do?sys_id=' + c.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;color:#60a5fa;text-decoration:none">' + esc(c.number) + ' \u2197</a>' +
+        (c.stateLabel ? ' <span style="color:#64748b">\u00b7 ' + esc(c.stateLabel) + '</span>' : '') +
+        (touchedToday(c) ? ' <span style="color:#34d399">\u00b7 updated today</span>' : '') +
+        '<div style="color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.sd) + '</div></div>';
+    });
     var wsb = waitState(it);
     if (wsb && wsb.back) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">' + (wsb.back === 'reply' ? 'They replied. Back on your list.' : 'Waiting time\u2019s up. Back on your list.') + '</div>';
     if (S.parked && S.parked[it.id] && it.due && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
@@ -606,7 +628,7 @@
     body.innerHTML = h;
   }
   function parkedLink() {
-    var n = tickets.filter(parkedNow).length + S.adhoc.filter(function (a) { return !a.done && isParked(a); }).length;
+    var n = tickets.filter(function (t) { return !grouped(t) && parkedNow(t); }).length + S.adhoc.filter(function (a) { return !a.done && isParked(a); }).length;
     return n ? btn('tab-parked', n + ' parked until later \u2192', 'border:none;background:none;color:#64748b;padding:4px 0') : '';
   }
   function renderHelp() {
@@ -638,7 +660,7 @@
   }
   function renderParked() {
     document.getElementById('snnSub').textContent = '';
-    var list = tickets.filter(parkedNow).concat(S.adhoc.filter(function (a) { return !a.done && isParked(a); })).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+    var list = tickets.filter(function (t) { return !grouped(t) && parkedNow(t); }).concat(S.adhoc.filter(function (a) { return !a.done && isParked(a); })).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
     var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 12px') +
       '<div style="font-size:16px;font-weight:600;margin-bottom:4px">Parked</div>' +
       '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px">Each one comes back ' + PARK_LEAD + ' days before its due date. Bring back clears the due date.</div>';
