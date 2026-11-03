@@ -593,6 +593,13 @@
     h += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #2a2a3e;font-size:12px;color:#94a3b8">Log time' +
       [0.5, 1, 2, 3].map(function (hh) { return '<button data-a="addtime" data-id="' + esc(it.id) + '" data-h="' + hh + '" style="padding:2px 8px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #2a2a3e;background:none;color:#94a3b8">+' + hrs(hh) + '</button>'; }).join('') +
       (logged ? '<span style="margin-left:auto;color:#67e8f9;font-weight:600">Today: ' + hrs(logged) + '</span>' : '') + '</div>';
+    h += '<div style="margin-top:6px">' + btn('meetopen', '\ud83d\udcc5 Log a meeting', 'border:none;background:none;color:#64748b;padding:2px 0;font-weight:400;font-size:12px') +
+      '<div id="snnMeet" style="display:none;margin-top:6px;padding:8px;border:1px solid #2a2a3e;border-radius:7px">' +
+      '<input id="snnMeetName" list="snnMeetNames" placeholder="Meeting name: ED huddle" autocomplete="off" style="width:100%;box-sizing:border-box;padding:6px 9px;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:13px;outline:none;margin-bottom:6px">' +
+      '<datalist id="snnMeetNames">' + (S.recentMeetings || []).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+      '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#94a3b8;margin-right:2px">Took</span>' +
+      [0.5, 1, 2].map(function (hh) { return '<button data-a="meetlog" data-h="' + hh + '" style="padding:3px 10px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #67e8f9;background:none;color:#67e8f9">' + hrs(hh) + '</button>'; }).join('') +
+      '</div></div></div>';
     if (isTicket && touchedPair(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:8px">\u2713 Updated today. Log your time, then hit Next.</div>';
     var wsb = waitState(it);
     if (wsb && wsb.back) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">' + (wsb.back === 'reply' ? 'They replied. Back on your list.' : 'Waiting time\u2019s up. Back on your list.') + '</div>';
@@ -904,11 +911,24 @@
       return '<button data-a="settime" data-id="' + esc(id) + '" data-h="' + h + '" style="padding:3px 8px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid ' + (on ? '#67e8f9' : '#2a2a3e') + ';background:' + (on ? '#67e8f9' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + hrs(h) + '</button>';
     }).join('') + '</div>';
   }
+  /* Meetings: quick time entries (name + hours) logged without leaving the card you're on */
+  function meetingsToday() { S.meet = S.meet || {}; return S.meet[TODAY] || []; }
+  function isMeeting(id) { return String(id).indexOf('mtg_') === 0; }
+  function meetingName(id) { var m = (S.meetNames || {})[id]; return m || 'Meeting'; }
+  function logMeeting(name, h) {
+    name = String(name || '').trim() || 'Meeting';
+    S.meet = S.meet || {}; S.meetNames = S.meetNames || {};
+    var list = S.meet[TODAY] = S.meet[TODAY] || [];
+    var id = 'mtg_' + uid(); list.push({ id: id, name: name, h: h });
+    S.meetNames[id] = name; dayTime()[id] = h;
+    S.recentMeetings = [name].concat((S.recentMeetings || []).filter(function (n) { return n.toLowerCase() !== name.toLowerCase(); })).slice(0, 12);
+    save(); return id;
+  }
   function wrapItems() {
     var rows = ((wrapData && wrapData.rows) || []).slice(), have = {};
     rows.forEach(function (r) { have[r.id] = 1; });
     Object.keys(dayTime()).forEach(function (id) {
-      if (have[id] || itemById(id)) return;
+      if (have[id] || itemById(id) || isMeeting(id)) return;
       var t = byId(id); var nm = (S.names && S.names[id]) || '';
       rows.push({ id: id, number: t ? t.number : nm.split(' ')[0], sd: t ? t.sd : nm.split(' ').slice(1).join(' '), state: t ? (t.stateLabel || '') : '', closed: false, notes: [] });
     });
@@ -916,7 +936,8 @@
     var doneAd = S.adhoc.filter(function (a) { return a.done === TODAY; });
     // still-open added items: only ones added today or with time logged today
     var openAd = S.adhoc.filter(function (a) { return !a.done && (a.added === TODAY || t[a.id]); });
-    return { rows: rows, doneAd: doneAd, openAd: openAd };
+    var meets = meetingsToday().filter(function (m) { return dayTime()[m.id]; });
+    return { rows: rows, doneAd: doneAd, openAd: openAd, meets: meets };
   }
   function buildSummary() {
     var w = wrapItems(), t = dayTime(), total = 0, out = [];
@@ -929,6 +950,7 @@
         r.notes.forEach(function (n) { lines.push('    ' + (n.length > 160 ? n.slice(0, 157) + '...' : n)); });
       });
     }
+    if (w.meets.length) { lines.push('', 'Meetings:'); w.meets.forEach(function (m) { lines.push('- ' + m.name + tm(m.id)); }); }
     if (w.doneAd.length) { lines.push('', 'Done:'); w.doneAd.forEach(function (a) { lines.push('- ' + (a.label ? a.label + ': ' : '') + a.title + tm(a.id)); }); }
     if (w.openAd.length) { lines.push('', 'Still open:'); w.openAd.forEach(function (a) { lines.push('- ' + (a.label ? a.label + ': ' : '') + a.title + tm(a.id)); }); }
     var note = ((S.logs[TODAY] || {}).note || '').trim();
@@ -966,7 +988,11 @@
       h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:14px 0 2px">YOUR ITEMS</div>';
       ad.forEach(function (a) { h += row(a.id, '<div style="font-size:13px">' + (a.label ? '<span style="color:#67e8f9">' + esc(a.label) + ':</span> ' : '') + esc(a.title) + '</div>', a.done ? 'Done' : 'Still open', ''); });
     }
-    if (!w.rows.length && !ad.length) h += '<div style="color:#64748b;font-size:13px;padding:6px 0 4px">No ticket activity from you today yet.</div>';
+    if (w.meets.length) {
+      h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:14px 0 2px">MEETINGS</div>';
+      w.meets.forEach(function (m) { h += row(m.id, '<div style="font-size:13px">\ud83d\udcc5 ' + esc(m.name) + '</div>', '', ''); });
+    }
+    if (!w.rows.length && !ad.length && !w.meets.length) h += '<div style="color:#64748b;font-size:13px;padding:6px 0 4px">No ticket activity from you today yet.</div>';
     if (wrapData.err) h += '<div style="font-size:12px;color:#f87171;margin-top:8px">Couldn\u2019t read today\u2019s tickets (' + esc(wrapData.err) + '). Your own items are still included.</div>';
     else if (!wrapData.me) h += '<div style="font-size:12px;color:#fbbf24;margin-top:8px">Couldn\u2019t tell your name from this page, so notes from anyone today are included.</div>';
     h += '<div style="font-size:12px;color:#94a3b8;margin:16px 0 6px">Anything to add?</div>';
@@ -1054,6 +1080,7 @@
   // every id you logged time on this week, summed, with a readable name
   function nameFor(id) {
     var t = byId(id); if (t) return t.number + ' ' + t.sd;
+    if (isMeeting(id)) { var mn = meetingName(id); return mn === 'Meeting' ? 'Meeting' : 'Meeting: ' + mn; }
     var a = itemById(id); if (a) return (a.label ? canonLabel(a.label) + ': ' : '') + a.title;
     var r = ((weekData && weekData.rows) || []).filter(function (x) { return x.id === id; })[0]; if (r) return r.number + ' ' + r.sd;
     return (S.names && S.names[id]) || 'Ticket ' + String(id).slice(0, 8);
@@ -1262,6 +1289,14 @@
       case 'addsave': addItem(); break;
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
+      case 'meetopen': var mb = document.getElementById('snnMeet'); mb.style.display = mb.style.display === 'none' ? 'block' : 'none'; if (mb.style.display === 'block') document.getElementById('snnMeetName').focus(); break;
+      case 'meetlog':
+        var mnm = (document.getElementById('snnMeetName') || {}).value || '', mh = parseFloat(el.getAttribute('data-h'));
+        var mid = logMeeting(mnm, mh); render();
+        showUndo('Logged ' + hrs(mh) + ' for ' + meetingName(mid) + '. Back to your ticket.', function () {
+          var L = meetingsToday().filter(function (x) { return x.id !== mid; }); S.meet[TODAY] = L; delete dayTime()[mid]; save();
+        });
+        break;
       case 'addtime':
         var dta = dayTime(), add = parseFloat(el.getAttribute('data-h')), before = dta[id] || 0, tk = byId(id);
         S.names = S.names || {}; if (tk) S.names[id] = tk.number + ' ' + tk.sd;
