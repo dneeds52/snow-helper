@@ -12,16 +12,23 @@
 
   /* ---------------- config ---------------- */
   var STALE_DAYS = 7;              // a work note older than this counts as "needs an update"
-  var PARK_DATE = '2027-02-22';    // "Park until" button date (Nashoba go-live 2/1, back on the list ~2/15)
   var PARK_LEAD = 7;               // a parked ticket comes back this many days before its due date
   var SLA_AT_RISK = 75;            // SLA % elapsed that counts as "in danger"
   var TABLES = ['sc_task', 'incident', 'change_request'];
   var ME = 'assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe'; // ServiceNow's built-in "Me" filter
   var OPEN = 'active=true^stateNOT IN3,4,7,8,6';
   var GROUP = 'b0f881a7db916e00cdb372fc0f961973';                  // EPIC-ASAP assignment group
-  var QUEUE_DAY = 3; // Wednesday: you're on the group queue
-  // Group queue switch: on automatically on Wednesdays; flip it for any day (only lasts that day)
-  function queueOn() { return S.queue && S.queue.day === dkey() ? S.queue.on : new Date().getDay() === QUEUE_DAY; }
+  // Group queue switch: on automatically on your queue day(s) from Settings; flip it for any day (only lasts that day)
+  function queueOn() { return S.queue && S.queue.day === dkey() ? S.queue.on : cfg().queueDays.indexOf(new Date().getDay()) >= 0; }
+  var DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  /* Per-person settings (saved in this browser). Existing users keep their original setup; new users start blank. */
+  function cfg() {
+    if (!S.settings) S.settings = S.isNew ? { queueDays: [], parkDate: '', projects: [] }
+      : { queueDays: [3], parkDate: '2027-02-22', projects: [{ name: 'Nashoba', nicknames: ['Noshoba', 'NV', 'Nashoba Valley'] }] };
+    return S.settings;
+  }
+  function parkDate() { var d = cfg().parkDate; return d && daysUntil(d + ' 17:00:00') > 7 ? d : ''; }
+  function mdShort(ymd) { var p2 = ymd.split('-'); return (+p2[1]) + '/' + (+p2[2]); }
   // your tickets, plus (when the queue is on) your group's tickets nobody has taken yet
   function listQuery() { return OPEN + '^' + ME + (queueOn() ? '^NQ' + OPEN + '^assigned_toISEMPTY^assignment_group=' + GROUP : ''); }
   var KEY = 'snNext_v1';
@@ -148,7 +155,7 @@
     ov.style.border = 'none';
     if (r) {
       ov.style.left = r.left + 'px'; ov.style.right = 'auto'; ov.style.top = r.top + 'px';
-      ov.style.height = r.height + 'px'; ov.style.width = Math.max(r.width, 300) + 'px';
+      ov.style.height = Math.min(r.height, window.innerHeight - Math.max(0, r.top)) + 'px'; ov.style.width = Math.max(r.width, 300) + 'px';
       ov.style.borderRight = '2px solid #a78bfa';
       ov.style.boxShadow = r.width < 300 ? '8px 0 24px rgba(0,0,0,.4)' : 'none';
     } else {
@@ -409,6 +416,7 @@
     if (tab === 'parked') return renderParked();
     if (tab === 'waiting') return renderWaiting();
     if (tab === 'help') return renderHelp();
+    if (tab === 'settings') return renderSettings();
   }
 
   var ORDER = ['top', 'initial', 'update', 'quick', 'prioritize'];
@@ -546,7 +554,7 @@
     h += '<button data-a="queue" title="Include your group\u2019s unassigned tickets" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:10px;padding:6px 9px;border-radius:7px;border:1px solid #2a2a3e;background:none;color:#94a3b8;font:inherit;font-size:12px;cursor:pointer;text-align:left">' +
       '<span style="display:inline-block;width:28px;height:16px;border-radius:999px;position:relative;background:' + (qo ? '#fbbf24' : '#2a2a3e') + '"><span style="position:absolute;top:2px;left:' + (qo ? '14px' : '2px') + ';width:12px;height:12px;border-radius:50%;background:#0f0f1a"></span></span>' +
       '<span style="white-space:nowrap;color:' + (qo ? '#fbbf24' : '#94a3b8') + '">Group queue ' + (qo ? 'on' : 'off') + '</span>' +
-      '<span style="margin-left:auto;color:#64748b;white-space:nowrap">' + (qAuto ? (qo ? 'Wednesday' : 'auto on Wed') : 'just for today') + '</span></button>';
+      '<span style="margin-left:auto;color:#64748b;white-space:nowrap">' + (qAuto ? (cfg().queueDays.length ? (qo ? 'your queue day' : 'auto on ' + cfg().queueDays.map(function (d) { return DAY_SHORT[d]; }).join('/')) : 'set days in \u2699') : 'just for today') + '</span></button>';
     h += stripHtml(B, active);
     if (!active) {
       var hidden = {}; tickets.forEach(function (t) { if (['3', '4', '5', '6', '7', '8'].indexOf(t.lane) >= 0) hidden[LANES[t.lane]] = (hidden[LANES[t.lane]] || 0) + 1; });
@@ -618,17 +626,19 @@
     if (!isTicket) h += '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:#94a3b8">Move to ' +
       '<select data-a="movelane" data-id="' + it.id + '" style="padding:5px 7px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:12px;color-scheme:dark">' + laneOptions(itemLane(it)) + '</select></div>';
     {
-      var pd = PARK_DATE.split('-');
+      var pdv = parkDate();
       h += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">' +
-        btn('park', '\u23f8 Park until ' + (+pd[1]) + '/' + (+pd[2]), 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id) +
-        '<button data-a="parkother" data-id="' + it.id + '" style="background:none;border:none;color:#64748b;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline">other date</button>' +
+        (pdv ? btn('park', '\u23f8 Park until ' + mdShort(pdv), 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id) +
+          '<button data-a="parkother" data-id="' + it.id + '" style="background:none;border:none;color:#64748b;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline">other date</button>'
+          : btn('parkother', '\u23f8 Park until\u2026', 'border:1px solid #2a2a3e;background:none;color:#94a3b8', it.id)) +
         '<span id="snnParkOther" style="display:none;gap:6px;align-items:center"><input type="date" id="snnParkDate" style="padding:5px 7px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:12px;color-scheme:dark">' +
         btn('parkgo', 'Park', 'border:1px solid #2a2a3e;background:none;color:#e2e8f0;padding:5px 10px', it.id) + '</span></div>' +
         '<div id="snnParkMsg" style="font-size:12px;margin-top:6px;min-height:1em"></div>';
     }
     h += '<div style="display:flex;justify-content:space-between;margin-top:22px">' +
       (seen.length ? btn('back', '\u2190 Back', 'border:none;background:none;color:#64748b;padding:4px 0') : '<span></span>') + '<span style="display:flex;flex-direction:column;align-items:flex-end">' + waitingLink() + parkedLink() + '</span></div>' +
-      '<div style="margin-top:6px">' + btn('fresh', '\u21ba Start a fresh pass', 'border:none;background:none;color:#64748b;padding:4px 0;font-weight:400;font-size:12px') + '</div>';
+      '<div style="display:flex;justify-content:space-between;margin-top:6px">' + btn('fresh', '\u21ba Start a fresh pass', 'border:none;background:none;color:#64748b;padding:4px 0;font-weight:400;font-size:12px') +
+      btn('tab-settings', '\u2699 Settings', 'border:none;background:none;color:#64748b;padding:4px 0;font-weight:400;font-size:12px') + '</div>';
     body.innerHTML = h; wireSearch();
   }
   function waitingLink() {
@@ -656,6 +666,41 @@
     var n = tickets.filter(function (t) { return !grouped(t) && parkedNow(t); }).length + S.adhoc.filter(function (a) { return !a.done && isParked(a); }).length;
     return n ? btn('tab-parked', n + ' parked until later \u2192', 'border:none;background:none;color:#64748b;padding:4px 0') : '';
   }
+  function renderSettings() {
+    document.getElementById('snnSub').textContent = '';
+    var c = cfg(), lbl = 'font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:16px 0 6px';
+    var h = btn('tab-next', '\u2190 Back to Next', 'border:none;background:none;color:#64748b;padding:0 0 4px') +
+      '<div style="font-size:16px;font-weight:600;margin:6px 0 2px">\u2699 Settings</div>' +
+      '<div style="font-size:12px;color:#94a3b8">Just for you, saved in this browser.</div>';
+    h += '<div style="' + lbl + '">GROUP QUEUE DAYS</div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px">The Group queue switch turns on by itself on these days.</div>' +
+      '<div style="display:flex;gap:4px;flex-wrap:wrap">' + [1, 2, 3, 4, 5].map(function (d) {
+        var on = c.queueDays.indexOf(d) >= 0;
+        return '<button data-a="setday" data-id="' + d + '" style="padding:5px 10px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#fbbf24' : '#2a2a3e') + ';background:' + (on ? '#fbbf24' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + DAY_SHORT[d] + '</button>';
+      }).join('') + '</div>';
+    h += '<div style="' + lbl + '">PARK DATE</div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px">What \u201cPark until\u201d uses. Leave blank to pick a date each time.</div>' +
+      '<div style="display:flex;gap:6px;align-items:center"><input type="date" id="snnSetPark" value="' + esc(c.parkDate || '') + '" style="' + inp() + 'width:auto;color-scheme:dark">' +
+      (c.parkDate ? btn('clearpark', 'Clear', 'border:none;background:none;color:#64748b;padding:4px;font-size:12px;text-decoration:underline') : '') + '</div>' +
+      (c.parkDate && !parkDate() ? '<div style="font-size:12px;color:#fbbf24;margin-top:4px">That date is within a week, so Park will ask for a date instead.</div>' : '');
+    h += '<div style="' + lbl + '">PROJECTS</div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px">Used by Weekly. Nicknames count as the same project (in labels and ticket descriptions).</div>';
+    c.projects.forEach(function (pr, i) {
+      h += '<div style="padding:8px 0;border-top:1px solid #2a2a3e"><div style="display:flex;gap:6px;align-items:center"><input data-proj="' + i + '" data-f="name" value="' + esc(pr.name) + '" placeholder="Project name" style="' + inp() + 'flex:1;padding:6px 9px;font-size:13px">' +
+        '<button data-a="delproj" data-id="' + i + '" title="Remove" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:15px">\u2715</button></div>' +
+        '<input data-proj="' + i + '" data-f="nicknames" value="' + esc((pr.nicknames || []).join(', ')) + '" placeholder="Nicknames, comma separated" style="' + inp() + 'margin-top:5px;padding:6px 9px;font-size:12px"></div>';
+    });
+    h += btn('addproj', '+ Add project', 'border:1px dashed #2a2a3e;background:none;color:#94a3b8;padding:6px 10px;font-size:12px;margin-top:6px');
+    h += '<div id="snnSetMsg" style="font-size:12px;color:#34d399;margin-top:14px;min-height:1em"></div>';
+    body.innerHTML = h;
+    document.getElementById('snnSetPark').addEventListener('change', function () { cfg().parkDate = this.value; save(); renderSettings(); setMsg('Saved.'); });
+    Array.prototype.forEach.call(body.querySelectorAll('[data-proj]'), function (inp2) {
+      inp2.addEventListener('change', function () {
+        var pr = cfg().projects[+inp2.getAttribute('data-proj')]; if (!pr) return;
+        if (inp2.getAttribute('data-f') === 'name') pr.name = inp2.value.trim();
+        else pr.nicknames = inp2.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+        save(); setMsg('Saved.');
+      });
+    });
+  }
+  function setMsg(t) { var m = document.getElementById('snnSetMsg'); if (m) { m.textContent = t; setTimeout(function () { if (m) m.textContent = ''; }, 1500); } }
   function renderHelp() {
     document.getElementById('snnSub').textContent = '';
     function sec(title, items) {
@@ -671,15 +716,17 @@
         b('15 min or less?') + ' Open it, do one thing, then ' + b('Next') + '.',
         b('Bigger and matters now?') + ' Start a 25-minute timer on it, then take 5.',
         b('Not today?') + ' Skip for today.',
-        b('After Nashoba?') + ' Park until 2/22.'
+        b('Waiting on someone?') + ' \u23f3 Waiting on reply.',
+        b('Not for weeks?') + (parkDate() ? ' Park until ' + mdShort(parkDate()) + '.' : ' Park it until a date.')
       ]) +
       sec('EACH DAY', [
         b('Morning:') + ' clear the <span style="color:#a78bfa">purple</span> and <span style="color:#fbbf24">yellow</span> cards.',
         b('Rest of day:') + ' a few <span style="color:#60a5fa">blue</span> cards.',
         b('End of day:') + ' Wrap up \u2192 copy to OneNote.',
-        b('Friday:') + ' Weekly \u2192 copy the Nashoba update.'
+        b('Friday:') + ' Weekly \u2192 copy your project update and time list.'
       ]) +
       '<div style="font-size:12px;color:#94a3b8;margin-top:16px;padding-top:12px;border-top:1px solid #2a2a3e">A good day = purple and yellow done, plus a couple of blue.</div>' +
+      '<div style="margin-top:10px">' + btn('tab-settings', '\u2699 Settings: queue days, park date, projects', 'border:none;background:none;color:#67e8f9;padding:0;font-weight:400;font-size:12px') + '</div>' +
       '</div>';
     body.innerHTML = h;
   }
@@ -708,7 +755,7 @@
     var doneToday = S.adhoc.filter(function (a) { return a.done === TODAY; });
     var h = '<div style="color:#94a3b8;font-size:13px;margin-bottom:10px">Project work that isn\u2019t in ServiceNow. Pick a bucket and it shows up in your walk alongside your tickets until you mark it done.</div>';
     h += '<input id="snnTitle" placeholder="Confirm go-live testing dates" style="' + inp() + 'margin-bottom:8px">';
-    h += '<input id="snnLabel" list="snnLabels" placeholder="Project label (optional): Nashoba" style="' + inp() + 'margin-bottom:8px">';
+    h += '<input id="snnLabel" list="snnLabels" placeholder="Project label (optional)' + (cfg().projects[0] ? ': ' + esc(cfg().projects[0].name) : '') + '" style="' + inp() + 'margin-bottom:8px">';
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#94a3b8">Bucket <select id="snnLane" style="flex:1;padding:8px 9px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:7px;color:#e2e8f0;font:inherit;font-size:13px;color-scheme:dark">' + laneOptions('initial') + '</select></div>';
     h += '<datalist id="snnLabels">' + S.labels.map(function (l) { return '<option value="' + esc(l) + '">'; }).join('') + '</datalist>';
     h += btn('addsave', 'Add', PRI);
@@ -944,13 +991,18 @@
   /* ---------------- Weekly ----------------
      Project update: this week's project tickets from ServiceNow (short description mentions the project)
      plus your items with that label. Time list: everything you logged time on this week, for Friday. */
-  var PROJECT_ALIASES = { nashoba: ['nashoba', 'noshoba', 'nv', 'nashoba valley'] };
+  function projectAliases() {
+    var m = {};
+    cfg().projects.forEach(function (pr) { var k = pr.name.trim().toLowerCase(); if (k) m[k] = [k].concat((pr.nicknames || []).map(function (n) { return n.trim().toLowerCase(); }).filter(Boolean)); });
+    return m;
+  }
   function canonLabel(l) {
     var x = String(l || '').trim().toLowerCase();
-    for (var k in PROJECT_ALIASES) if (PROJECT_ALIASES[k].indexOf(x) >= 0) return k.charAt(0).toUpperCase() + k.slice(1);
+    var PA = projectAliases();
+    for (var k in PA) if (PA[k].indexOf(x) >= 0) return cfg().projects.filter(function (pr) { return pr.name.trim().toLowerCase() === k; })[0].name.trim();
     return String(l || '').trim();
   }
-  function projectWords(label) { var k = canonLabel(label).toLowerCase(); return PROJECT_ALIASES[k] || [k]; }
+  function projectWords(label) { var k = canonLabel(label).toLowerCase(); return projectAliases()[k] || [k]; }
   function mentions(text, label) {
     var t = String(text || '').toLowerCase();
     return projectWords(label).some(function (w) { return new RegExp('(^|[^a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z0-9]|$)').test(t); });
@@ -971,7 +1023,7 @@
   }
   function weekLabels() {
     var seenL = {}, out = [];
-    S.labels.concat(S.adhoc.map(function (a) { return a.label; })).forEach(function (l) { var c = canonLabel(l); if (c && !seenL[c.toLowerCase()]) { seenL[c.toLowerCase()] = 1; out.push(c); } });
+    cfg().projects.map(function (pr) { return pr.name; }).concat(S.labels, S.adhoc.map(function (a) { return a.label; })).forEach(function (l) { var c = canonLabel(l); if (c && !seenL[c.toLowerCase()]) { seenL[c.toLowerCase()] = 1; out.push(c); } });
     return out;
   }
   function buildWeekly(label) {
@@ -1035,9 +1087,9 @@
     }
     var labels = weekLabels(), h = '';
     S.weekly = S.weekly || {};
-    if (!labels.length) h += '<div style="color:#94a3b8;line-height:1.6;margin-bottom:12px">Add an item with a project label (like Nashoba) on the <b>+ Add</b> tab, and its weekly update will build here.</div>';
+    if (!labels.length) h += '<div style="color:#94a3b8;line-height:1.6;margin-bottom:12px">Add a project in <b>\u2699 Settings</b> (or give an item a project label on <b>+ Add</b>), and its weekly update will build here.</div>';
     else {
-      if (!weeklyLabel || labels.indexOf(canonLabel(weeklyLabel)) < 0) weeklyLabel = labels.indexOf('Nashoba') >= 0 ? 'Nashoba' : labels[0];
+      if (!weeklyLabel || labels.indexOf(canonLabel(weeklyLabel)) < 0) weeklyLabel = labels[0];
       var saved = S.weekly[weekKey(weeklyLabel)];
       h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + labels.map(function (l) {
         var on = l === weeklyLabel; return '<button data-a="wlabel" data-id="' + esc(l) + '" style="padding:5px 11px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#67e8f9' : '#2a2a3e') + ';background:' + (on ? '#67e8f9' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + esc(l) + '</button>';
@@ -1150,6 +1202,11 @@
     if (['next', 'back', 'skip', 'adone', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
     if (['next', 'skip', 'adone'].indexOf(a) >= 0 && S.wait && id && S.wait[id] && waitState(byId(id) || itemById(id) || { id: id }) && waitState(byId(id) || itemById(id) || { id: id }).back) delete S.wait[id];
     switch (a) {
+      case 'tab-settings': setTab('settings'); break;
+      case 'setday': var dd = +id, qd = cfg().queueDays, qi = qd.indexOf(dd); if (qi >= 0) qd.splice(qi, 1); else qd.push(dd); qd.sort(); save(); renderSettings(); setMsg('Saved.'); break;
+      case 'clearpark': cfg().parkDate = ''; save(); renderSettings(); setMsg('Saved.'); break;
+      case 'addproj': cfg().projects.push({ name: '', nicknames: [] }); save(); renderSettings(); var ni = body.querySelectorAll('[data-f=name]'); if (ni.length) ni[ni.length - 1].focus(); break;
+      case 'delproj': var gone2 = cfg().projects.splice(+id, 1)[0]; save(); renderSettings(); showUndo('Removed project \u201c' + (gone2.name || 'untitled') + '\u201d.', function () { cfg().projects.splice(+id, 0, gone2); save(); }); break;
       case 'welcomed': S.welcomed = true; save(); render(); break;
       case 'queue': S.queue = { day: TODAY, on: !queueOn() }; delete S.cur; S.known = null; save(); loadAll(); break;
       case 'pomostart': pomoStart(id); break;
@@ -1181,7 +1238,7 @@
       case 'back': seen.pop(); save(); render(); break;
       case 'skip': S.skip[id] = TODAY; save(); render(); break;
       case 'quick': if (S.quick[id]) delete S.quick[id]; else S.quick[id] = TODAY; save(); render(); break;
-      case 'park': park(id, PARK_DATE); break;
+      case 'park': park(id, parkDate()); break;
       case 'parkother': var po = document.getElementById('snnParkOther'); po.style.display = po.style.display === 'none' ? 'inline-flex' : 'none'; break;
       case 'parkgo': var dv2 = document.getElementById('snnParkDate').value; if (!dv2) { parkMsg('Pick a date first.', true); break; } park(id, dv2); break;
       case 'unpark': unpark(id, el); break;
