@@ -219,13 +219,20 @@
   var tickets = [], loaded = false, loadErr = '', userName = '', todayNotes = [];
   var lastLoad = 0, loading = false;
   // silent = refresh in the background without flashing "Reading your tickets"
+  var loadFails = [];
   function loadAll(silent) {
+    loadFails = [];
     if (loading) return; loading = true; lastLoad = Date.now();
     if (!silent) { loaded = false; loadErr = ''; render(); }
     var fields = 'sys_id,number,short_description,order,state,priority,sys_updated_on,opened_at,sys_class_name,due_date,assigned_to,parent';
     Promise.all(TABLES.map(function (t) {
-      return q(t, listQuery(), fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; }).catch(function () { return []; });
+      return q(t, listQuery(), fields).then(function (r) { r.forEach(function (x) { x._table = t; }); return r; })
+        .catch(function (e) { loadFails.push({ table: t, code: String(e && e.message || 'error') }); return []; });
     })).then(function (sets) {
+      if (loadFails.length === TABLES.length) {
+        var code = loadFails[0].code;
+        throw new Error(code === '401' || code === '403' ? 'blocked:' + code : code);
+      }
       tickets = [].concat.apply([], sets).map(function (x) {
         return { id: v(x.sys_id), table: x._table, number: dv(x.number), sd: dv(x.short_description), order: v(x.order),
                  lane: laneKey(v(x.order)), priority: dv(x.priority), opened: v(x.opened_at), updated: v(x.sys_updated_on), unassigned: !v(x.assigned_to), due: v(x.due_date) || '', lastNote: null, sla: null,
@@ -253,7 +260,14 @@
         .catch(function () {});
       return Promise.all([notes, slas]);
     }).then(function () { loading = false; loaded = true; loadErr = ''; noteArrivals(); var sb = document.getElementById('snnSub'); if (sb && /^Refresh/.test(sb.textContent)) sb.textContent = ''; if (!silent || tab === 'next' || tab === 'parked') keepTyping(render); })
-      .catch(function (e) { loading = false; if (silent) return; loaded = true; loadErr = 'Couldn\u2019t load your tickets (' + e.message + '). Try Refresh.'; render(); });
+      .catch(function (e) {
+        loading = false; if (silent) return; loaded = true;
+        var m = String(e.message || '');
+        loadErr = /^blocked:/.test(m)
+          ? 'ServiceNow didn\u2019t let What\u2019s Next read your tickets (error ' + m.slice(8) + '). Your account may need access to the ServiceNow REST API (Table API). Ask your ServiceNow admin, or tell Darcy.'
+          : 'Couldn\u2019t load your tickets (' + m + '). Try Refresh.';
+        render();
+      });
   }
   // don't wipe anything you're typing in during a background refresh
   function keepTyping(fn) { var a = document.activeElement; if (a && ov.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return; fn(); }
@@ -556,6 +570,15 @@
       '<span style="white-space:nowrap;color:' + (qo ? '#fbbf24' : '#94a3b8') + '">Group queue ' + (qo ? 'on' : 'off') + '</span>' +
       '<span style="margin-left:auto;color:#64748b;white-space:nowrap">' + (qAuto ? (cfg().queueDays.length ? (qo ? 'your queue day' : 'auto on ' + cfg().queueDays.map(function (d) { return DAY_SHORT[d]; }).join('/')) : 'set days in \u2699') : 'just for today') + '</span></button>';
     h += stripHtml(B, active);
+    if (!active && !tickets.length && !S.adhoc.filter(function (a) { return !a.done; }).length) {
+      var who = myFullName() || myUserName() || 'you';
+      h += '<div style="font-size:16px;font-weight:600;margin-bottom:8px">No open tickets found</div>' +
+        '<div style="color:#94a3b8;line-height:1.6;font-size:13px;margin-bottom:10px">What\u2019s Next looked for open catalog tasks, incidents, and changes assigned to <b style="color:#e2e8f0">' + esc(who) + '</b> and found none.</div>';
+      if (loadFails.length) h += '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">Some lookups were blocked by ServiceNow: ' + esc(loadFails.map(function (f) { return f.table + ' (' + f.code + ')'; }).join(', ')) + '.</div>';
+      if (!myFullName() && !myUserName()) h += '<div style="font-size:12px;color:#fbbf24;margin-bottom:10px">It also couldn\u2019t tell who\u2019s logged in from this page. Try opening it from a ServiceNow list or ticket page.</div>';
+      h += btn('refresh', 'Refresh');
+      body.innerHTML = h; wireSearch(); return;
+    }
     if (!active) {
       var hidden = {}; tickets.forEach(function (t) { if (['3', '4', '5', '6', '7', '8'].indexOf(t.lane) >= 0) hidden[LANES[t.lane]] = (hidden[LANES[t.lane]] || 0) + 1; });
       h += '<div style="font-size:18px;font-weight:600;margin-bottom:8px">You\u2019re through the list.</div>' +
