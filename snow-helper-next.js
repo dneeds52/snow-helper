@@ -933,7 +933,7 @@
         var ca = v(x.closed_at), closedToday = ca && dkey(new Date(Date.parse(ca.replace(' ', 'T') + 'Z'))) === TODAY;
         var closed = !!closedToday && /closed|resolved|complete|cancel/i.test(state);
         if (!entries.length && !closed) return;
-        rows.push({ id: v(x.sys_id), number: dv(x.number), sd: dv(x.short_description), state: state, closed: closed,
+        rows.push({ id: v(x.sys_id), table: v(x.sys_class_name) || 'task', number: dv(x.number), sd: dv(x.short_description), state: state, closed: closed,
                     notes: entries.map(function (e) { return e.text; }).filter(Boolean) });
       });
       rows.sort(function (a, b) { return a.number < b.number ? -1 : 1; });
@@ -961,13 +961,18 @@
     S.recentMeetings = [name].concat((S.recentMeetings || []).filter(function (n) { return n.toLowerCase() !== name.toLowerCase(); })).slice(0, 12);
     save(); return id;
   }
+  function tableFor(r) {
+    if (r.table && r.table !== 'task') return r.table;
+    var pre = (String(r.number || '').match(/^[A-Z]+/) || [''])[0];
+    return { INC: 'incident', SCTASK: 'sc_task', CHG: 'change_request', RITM: 'sc_req_item', REQ: 'sc_request', PRB: 'problem', CTASK: 'change_task' }[pre] || 'task';
+  }
   function wrapItems() {
     var rows = ((wrapData && wrapData.rows) || []).slice(), have = {};
     rows.forEach(function (r) { have[r.id] = 1; });
     Object.keys(dayTime()).forEach(function (id) {
       if (have[id] || itemById(id) || isMeeting(id)) return;
       var t = byId(id); var nm = (S.names && S.names[id]) || '';
-      rows.push({ id: id, number: t ? t.number : nm.split(' ')[0], sd: t ? t.sd : nm.split(' ').slice(1).join(' '), state: t ? (t.stateLabel || '') : '', closed: false, notes: [] });
+      rows.push({ id: id, table: t ? t.table : 'task', number: t ? t.number : nm.split(' ')[0], sd: t ? t.sd : nm.split(' ').slice(1).join(' '), state: t ? (t.stateLabel || '') : '', closed: false, notes: [] });
     });
     var t = dayTime();
     var doneAd = S.adhoc.filter(function (a) { return a.done === TODAY; });
@@ -1016,7 +1021,7 @@
       h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#60a5fa;margin:4px 0 2px">SERVICENOW</div>';
       w.rows.forEach(function (r) {
         var n = r.notes.length ? esc(r.notes[r.notes.length - 1].slice(0, 110)) + (r.notes[r.notes.length - 1].length > 110 ? '\u2026' : '') : '';
-        h += row(r.id, '<div style="font-size:13px"><span style="font-family:Consolas,monospace;color:#60a5fa">' + esc(r.number) + '</span> ' + esc(r.sd) + '</div>',
+        h += row(r.id, '<div style="font-size:13px"><a href="' + esc(BASE + '/' + tableFor(r) + '.do?sys_id=' + r.id) + '" target="_blank" rel="noopener" title="Open in ServiceNow" style="font-family:Consolas,monospace;color:#60a5fa;text-decoration:none">' + esc(r.number) + ' \u2197</a> ' + esc(r.sd) + '</div>',
           r.closed ? esc(r.state) : (r.notes.length ? plural(r.notes.length, 'update') : 'Time logged'), n);
       });
     }
