@@ -561,6 +561,10 @@
         (touchedToday(c) ? ' <span style="color:#34d399">\u00b7 updated today</span>' : '') +
         '<div style="color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.sd) + '</div></div>';
     });
+    var logged = dayTime()[it.id] || 0;
+    h += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #2a2a3e;font-size:12px;color:#94a3b8">Log time' +
+      [0.5, 1, 2, 3].map(function (hh) { return '<button data-a="addtime" data-id="' + esc(it.id) + '" data-h="' + hh + '" style="padding:2px 8px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #2a2a3e;background:none;color:#94a3b8">+' + hrs(hh) + '</button>'; }).join('') +
+      (logged ? '<span style="margin-left:auto;color:#67e8f9;font-weight:600">Today: ' + hrs(logged) + '</span>' : '') + '</div>';
     var wsb = waitState(it);
     if (wsb && wsb.back) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">' + (wsb.back === 'reply' ? 'They replied. Back on your list.' : 'Waiting time\u2019s up. Back on your list.') + '</div>';
     if (S.parked && S.parked[it.id] && it.due && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
@@ -827,13 +831,19 @@
   function dayTime() { S.time = S.time || {}; S.time[TODAY] = S.time[TODAY] || {}; return S.time[TODAY]; }
   function timeChips(id) {
     var cur = dayTime()[id];
-    return '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">' + HOURS.map(function (h) {
+    return '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">' + (cur && HOURS.indexOf(cur) < 0 ? '<span style="font-size:12px;color:#67e8f9;margin-right:4px">' + hrs(cur) + ' logged \u00b7 set:</span>' : '') + HOURS.map(function (h) {
       var on = cur === h;
       return '<button data-a="settime" data-id="' + esc(id) + '" data-h="' + h + '" style="padding:3px 8px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid ' + (on ? '#67e8f9' : '#2a2a3e') + ';background:' + (on ? '#67e8f9' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + hrs(h) + '</button>';
     }).join('') + '</div>';
   }
   function wrapItems() {
-    var rows = (wrapData && wrapData.rows) || [];
+    var rows = ((wrapData && wrapData.rows) || []).slice(), have = {};
+    rows.forEach(function (r) { have[r.id] = 1; });
+    Object.keys(dayTime()).forEach(function (id) {
+      if (have[id] || itemById(id)) return;
+      var t = byId(id); var nm = (S.names && S.names[id]) || '';
+      rows.push({ id: id, number: t ? t.number : nm.split(' ')[0], sd: t ? t.sd : nm.split(' ').slice(1).join(' '), state: t ? (t.stateLabel || '') : '', closed: false, notes: [] });
+    });
     var t = dayTime();
     var doneAd = S.adhoc.filter(function (a) { return a.done === TODAY; });
     // still-open added items: only ones added today or with time logged today
@@ -880,7 +890,7 @@
       w.rows.forEach(function (r) {
         var n = r.notes.length ? esc(r.notes[r.notes.length - 1].slice(0, 110)) + (r.notes[r.notes.length - 1].length > 110 ? '\u2026' : '') : '';
         h += row(r.id, '<div style="font-size:13px"><span style="font-family:Consolas,monospace;color:#60a5fa">' + esc(r.number) + '</span> ' + esc(r.sd) + '</div>',
-          r.closed ? esc(r.state) : plural(r.notes.length, 'update'), n);
+          r.closed ? esc(r.state) : (r.notes.length ? plural(r.notes.length, 'update') : 'Time logged'), n);
       });
     }
     var ad = w.doneAd.concat(w.openAd);
@@ -1173,6 +1183,12 @@
       case 'addsave': addItem(); break;
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
+      case 'addtime':
+        var dta = dayTime(), add = parseFloat(el.getAttribute('data-h')), before = dta[id] || 0, tk = byId(id);
+        S.names = S.names || {}; if (tk) S.names[id] = tk.number + ' ' + tk.sd;
+        dta[id] = before + add; save(); render();
+        showUndo('Logged ' + hrs(add) + ' on ' + (tk ? tk.number : 'this item') + '. Today: ' + hrs(dta[id]) + '.', function () { var d2 = dayTime(); if (before) d2[id] = before; else delete d2[id]; save(); });
+        break;
       case 'settime': S.names = S.names || {}; var wr = ((wrapData && wrapData.rows) || []).filter(function (x) { return x.id === id; })[0]; if (wr) S.names[id] = wr.number + ' ' + wr.sd; var dt = dayTime(), hh = parseFloat(el.getAttribute('data-h')); if (dt[id] === hh) delete dt[id]; else dt[id] = hh; save(); renderWrap(true); break;
       case 'rebuildsum': var lt = logToday(); lt.edited = false; delete lt.summary; save(); renderWrap(true); break;
       case 'copyweek': copy(document.getElementById('snnWeek').value); break;
