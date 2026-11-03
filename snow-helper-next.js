@@ -502,7 +502,7 @@
     if (focus && !B[focus].next) { focus = null; delete S.focus; save(); }
     var pend = pendingNew(B), stay = null;
     // the card you're on stays put, even if new tickets arrive in an earlier bucket
-    if (S.cur && S.cur.day === TODAY) ORDER.some(function (k) { return B[k].items.some(function (x) { if (x.item.id === S.cur.id && (!x.done || S.cur.pick)) { stay = { step: k, entry: x }; return true; } return false; }); });
+    if (S.cur && S.cur.day === TODAY) ORDER.some(function (k) { return B[k].items.some(function (x) { if (x.item.id === S.cur.id && (seen.indexOf(x.item.id) < 0 || S.cur.pick)) { stay = { step: k, entry: x }; return true; } return false; }); });
     var normal = focus || ORDER.filter(function (k) { return B[k].next; })[0] || null;
     function earlier(p, step) { return step && ORDER.indexOf(p.step) < ORDER.indexOf(step); }
     // new arrivals in an earlier bucket than where you are go next (after the card you're on)
@@ -565,6 +565,7 @@
     h += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #2a2a3e;font-size:12px;color:#94a3b8">Log time' +
       [0.5, 1, 2, 3].map(function (hh) { return '<button data-a="addtime" data-id="' + esc(it.id) + '" data-h="' + hh + '" style="padding:2px 8px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #2a2a3e;background:none;color:#94a3b8">+' + hrs(hh) + '</button>'; }).join('') +
       (logged ? '<span style="margin-left:auto;color:#67e8f9;font-weight:600">Today: ' + hrs(logged) + '</span>' : '') + '</div>';
+    if (isTicket && touchedPair(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:8px">\u2713 Updated today. Log your time, then hit Next.</div>';
     var wsb = waitState(it);
     if (wsb && wsb.back) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">' + (wsb.back === 'reply' ? 'They replied. Back on your list.' : 'Waiting time\u2019s up. Back on your list.') + '</div>';
     if (S.parked && S.parked[it.id] && it.due && !isParked(it)) h += '<div style="font-size:12px;color:#34d399;margin-top:6px">Parked until ' + esc(shortDate(it.due)) + ', back on your list</div>';
