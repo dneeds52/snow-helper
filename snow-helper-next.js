@@ -36,7 +36,7 @@
   var BASE = MOCK ? (MOCK.base || '') : location.origin;
 
   /* ---------------- storage ---------------- */
-  function load() { try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.adhoc) return s; } catch (e) {} return { adhoc: [], quick: {}, skip: {}, seen: {}, logs: {}, labels: [] }; }
+  function load() { try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.adhoc) return s; } catch (e) {} return { adhoc: [], quick: {}, skip: {}, seen: {}, logs: {}, labels: [], isNew: true }; }
   var S = load();
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -493,7 +493,27 @@
     });
     return h + '</div>';
   }
+  function renderWelcome() {
+    document.getElementById('snnSub').textContent = '';
+    function li(t) { return '<div style="display:flex;gap:8px;padding:5px 0;font-size:13px;line-height:1.45;color:#cbd5e1"><span style="color:#67e8f9">\u2022</span><span>' + t + '</span></div>'; }
+    function b(t) { return '<b style="color:#e2e8f0">' + t + '</b>'; }
+    body.innerHTML =
+      '<div style="font-size:17px;font-weight:600;margin-bottom:6px">Welcome to What\u2019s Next</div>' +
+      '<div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:12px">Instead of your whole ticket list, this shows you <b style="color:#e2e8f0">one ticket at a time</b>, in our triage order: Initial Action, then Update Needed, then Prioritize (the Order field lanes).</div>' +
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:4px 0 2px">ON EACH CARD</div>' +
+      li(b('Open ticket') + ', do your work, add your note.') +
+      li(b('Log time') + ' (+\u00bdh, +1h\u2026) before you move on.') +
+      li(b('Next') + ' when you\u2019re done with it for now.') +
+      li(b('Skip for today') + ', ' + b('\u23f3 Waiting on reply') + ', or ' + b('Park') + ' (much later) if it\u2019s not for now.') +
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:12px 0 2px">GOOD TO KNOW</div>' +
+      li(b('Group queue') + ' switch adds the group\u2019s unassigned tickets on your queue day.') +
+      li('It only reads ServiceNow. The one exception: ' + b('Park') + ' sets the ticket\u2019s due date.') +
+      li('Your skips, items, and time are saved in this browser only.') +
+      li(b('?') + ' in the header has the short how-to anytime.') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">' + btn('welcomed', 'Show my tickets \u2192', PRI) + btn('close', 'Not now') + '</div>';
+  }
   function renderNext() {
+    if (S.isNew && !S.welcomed) return renderWelcome();
     document.getElementById('snnSub').textContent = '';
     if (!loaded) { body.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 0">Reading your tickets\u2026</div>'; return; }
     if (loadErr) { body.innerHTML = '<div style="color:#f87171;margin-bottom:12px">' + esc(loadErr) + '</div>' + btn('refresh', 'Refresh'); return; }
@@ -1130,6 +1150,7 @@
     if (['next', 'back', 'skip', 'adone', 'restart', 'fresh', 'gonew', 'pin'].indexOf(a) >= 0) delete S.cur;
     if (['next', 'skip', 'adone'].indexOf(a) >= 0 && S.wait && id && S.wait[id] && waitState(byId(id) || itemById(id) || { id: id }) && waitState(byId(id) || itemById(id) || { id: id }).back) delete S.wait[id];
     switch (a) {
+      case 'welcomed': S.welcomed = true; save(); render(); break;
       case 'queue': S.queue = { day: TODAY, on: !queueOn() }; delete S.cur; S.known = null; save(); loadAll(); break;
       case 'pomostart': pomoStart(id); break;
       case 'pomostop': pomoStop(); break;
