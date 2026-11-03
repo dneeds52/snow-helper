@@ -790,6 +790,20 @@
     h += '<datalist id="snnLabels">' + S.labels.map(function (l) { return '<option value="' + esc(l) + '">'; }).join('') + '</datalist>';
     h += btn('addsave', 'Add', PRI);
     h += '<div id="snnAddMsg" style="font-size:12px;color:#34d399;margin-top:8px;min-height:1em"></div>';
+    // Log a meeting (same as on the card)
+    var mt = meetingsToday().filter(function (m) { return dayTime()[m.id]; });
+    h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:16px 0 6px">LOG A MEETING</div>' +
+      '<input id="snnMeetName" list="snnMeetNames" placeholder="Meeting name: ED huddle" autocomplete="off" style="' + inp() + 'margin-bottom:6px">' +
+      '<datalist id="snnMeetNames">' + (S.recentMeetings || []).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+      '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#94a3b8;margin-right:2px">Took</span>' +
+      [0.5, 1, 2].map(function (hh) { return '<button data-a="meetlog" data-h="' + hh + '" style="padding:3px 10px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #67e8f9;background:none;color:#67e8f9">' + hrs(hh) + '</button>'; }).join('') + '</div>';
+    if (mt.length) {
+      h += '<div style="margin-top:8px">' + mt.map(function (m) {
+        return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid #2a2a3e;font-size:13px"><span style="flex:1">\ud83d\udcc5 ' + esc(m.name) + '</span>' +
+          '<span style="color:#67e8f9;font-size:12px">' + hrs(dayTime()[m.id]) + '</span>' +
+          '<button data-a="meetdel" data-id="' + m.id + '" title="Remove" style="background:none;border:none;cursor:pointer;font-size:15px;color:#64748b">\u2715</button></div>';
+      }).join('') + '</div>';
+    }
     function itemRow(a, done) {
       if (editingId === a.id) {
         return '<div style="padding:8px 0;border-top:1px solid #2a2a3e">' +
@@ -1313,10 +1327,15 @@
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
       case 'meetopen': var mb = document.getElementById('snnMeet'); mb.style.display = mb.style.display === 'none' ? 'block' : 'none'; if (mb.style.display === 'block') document.getElementById('snnMeetName').focus(); break;
+      case 'meetdel':
+        var mdl = meetingsToday().filter(function (x) { return x.id === id; })[0], mhv = dayTime()[id];
+        S.meet[TODAY] = meetingsToday().filter(function (x) { return x.id !== id; }); delete dayTime()[id]; save(); render();
+        if (mdl) showUndo('Removed ' + mdl.name + '.', function () { S.meet[TODAY].push(mdl); dayTime()[id] = mhv; save(); });
+        break;
       case 'meetlog':
         var mnm = (document.getElementById('snnMeetName') || {}).value || '', mh = parseFloat(el.getAttribute('data-h'));
         var mid = logMeeting(mnm, mh); render();
-        showUndo('Logged ' + hrs(mh) + ' for ' + meetingName(mid) + '. Back to your ticket.', function () {
+        showUndo('Logged ' + hrs(mh) + ' for ' + meetingName(mid) + '.' + (tab === 'next' ? ' Back to your ticket.' : ''), function () {
           var L = meetingsToday().filter(function (x) { return x.id !== mid; }); S.meet[TODAY] = L; delete dayTime()[mid]; save();
         });
         break;
