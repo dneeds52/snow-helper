@@ -25,6 +25,7 @@
   function cfg() {
     if (!S.settings) S.settings = S.isNew ? { queueDays: [], parkDate: '', projects: [] }
       : { queueDays: [3], parkDate: '2027-02-22', projects: [{ name: 'Nashoba', nicknames: ['Noshoba', 'NV', 'Nashoba Valley'] }] };
+    if (S.settings.blockedDay === undefined) S.settings.blockedDay = S.isNew ? -1 : 3;
     return S.settings;
   }
   function parkDate() { var d = cfg().parkDate; return d && daysUntil(d + ' 17:00:00') > 7 ? d : ''; }
@@ -34,7 +35,7 @@
   var KEY = 'snNext_v1';
   var LANES = { '': 'Initial Action', '0': 'Update Needed', '1': 'Update Needed', '2': 'Prioritize', '3': 'Discuss',
                 '4': 'Scheduled', '5': 'Blocked', '6': 'Deferred', '7': 'DC Move', '8': 'ASAP PC' };
-  var STEP_COLOR = { top: '#f87171', initial: '#a78bfa', update: '#fbbf24', quick: '#fb923c', adhoc: '#67e8f9', prioritize: '#60a5fa' };
+  var STEP_COLOR = { blocked: '#fb7185', top: '#f87171', initial: '#a78bfa', update: '#fbbf24', quick: '#fb923c', adhoc: '#67e8f9', prioritize: '#60a5fa' };
 
   var MOCK = window.SNNEXT_MOCK || null; // preview/testing only
   var tok = MOCK ? 'mock' : window.g_ck;
@@ -74,6 +75,13 @@
       .then(function (j) { return j.result || []; });
   }
   // The ONLY write What's Next makes: setting or clearing a ticket's due date, when you click Park / Bring back.
+  function setOrder(t, order) {
+    if (MOCK) return Promise.resolve(MOCK.write(t.table, t.id, { order: order }));
+    return fetch(BASE + '/api/now/table/' + t.table + '/' + t.id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-UserToken': tok },
+      body: JSON.stringify({ order: order })
+    }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
   function setDue(t, ymd) {
     var val = ymd ? ymd + ' 17:00:00' : '';   // noon Eastern, stored in UTC
     if (MOCK) return Promise.resolve(MOCK.write(t.table, t.id, { due_date: val }));
@@ -401,6 +409,13 @@
     mergeByAge(updT, function (t) { return noteAge(t) || 0; }, itemsIn('update')).forEach(function (x) {
       push('update', x, isItem(x) ? itemWhy(x) + ', needs an update' : 'In Update Needed, ' + updateText(x));
     });
+    // 2b. Blocked check-in (weekly, on your check-in day)
+    if (cfg().blockedDay === new Date().getDay()) {
+      S.blockedChecked = S.blockedChecked || {};
+      live.filter(function (t) { return t.lane === '5' && (daysAgo(t.updated) || 0) >= 7 && !(S.blockedChecked[t.id] >= weekStart()); })
+        .sort(function (a, b) { return (daysAgo(b.updated) || 0) - (daysAgo(a.updated) || 0); })
+        .forEach(function (t) { var d = daysAgo(t.updated); push('blocked', t, 'Blocked, no update in ' + plural(d, 'day') + '. Still blocked?'); });
+    }
     // 3. Quick wins - tickets or items you've tagged as 15 minutes or less
     live.filter(function (t) { return S.quick[t.id]; }).forEach(function (t) { push('quick', t, 'You tagged this as a quick win'); });
     items.filter(function (a) { return S.quick[a.id] && itemLane(a) !== 'waiting' && itemLane(a) !== 'deferred'; }).forEach(function (a) { push('quick', a, 'You tagged this as a quick win'); });
@@ -415,7 +430,7 @@
     });
     return out;
   }
-  var STEP_NAME = { top: 'Important', initial: 'Initial Action', update: 'Update Needed', quick: 'Quick win', adhoc: 'Your items', prioritize: 'Prioritize' };
+  var STEP_NAME = { blocked: 'Blocked', top: 'Important', initial: 'Initial Action', update: 'Update Needed', quick: 'Quick win', adhoc: 'Your items', prioritize: 'Prioritize' };
 
   /* ---------------- views ---------------- */
   function btn(a, label, style, id) { return '<button data-a="' + a + '"' + (id ? ' data-id="' + id + '"' : '') + ' style="padding:8px 12px;border-radius:7px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;' + (style || 'border:1px solid #2a2a3e;background:none;color:#e2e8f0') + '">' + label + '</button>'; }
@@ -433,7 +448,7 @@
     if (tab === 'settings') return renderSettings();
   }
 
-  var ORDER = ['top', 'initial', 'update', 'quick', 'prioritize'];
+  var ORDER = ['top', 'initial', 'update', 'blocked', 'quick', 'prioritize'];
   var lastActive = null;
   function buckets() {
     var queue = buildQueue(), seen = S.seen[TODAY] || [], B = {};
@@ -490,7 +505,7 @@
     var h = '<div style="margin-bottom:14px">';
     ORDER.forEach(function (k) {
       var b = B[k], col = STEP_COLOR[k];
-      if ((k === 'quick' || k === 'top') && !b.total) return;
+      if ((k === 'quick' || k === 'top' || k === 'blocked') && !b.total) return;
       var isActive = k === active, finished = !b.next;
       var icon = finished ? '\u2713' : (isActive ? '\u25cf' : '\u25cb');
       var count = !b.total ? 'none' : finished ? 'done' : isActive ? (k === 'prioritize' ? 'next up' : (b.done + 1) + ' of ' + b.total) : (k === 'prioritize' ? '' : String(b.total - b.done));
@@ -595,7 +610,7 @@
     S.cur = { day: TODAY, id: cur.item.id }; save();
     var it = cur.item, col = STEP_COLOR[cur.step], isTicket = !isItem(it);
     h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:' + col + ';text-transform:uppercase;margin-bottom:8px">' +
-      (cur.step === 'prioritize' ? 'Pick this up for 25 min' : STEP_NAME[cur.step]) + '</div>';
+      (cur.step === 'prioritize' ? 'Pick this up for 25 min' : cur.step === 'blocked' ? 'Blocked check-in \u00b7 weekly' : STEP_NAME[cur.step]) + '</div>';
     h += '<div style="border:1px solid ' + col + '66;border-left:4px solid ' + col + ';border-radius:0;background:#1a1a2e;padding:16px;margin-bottom:14px">';
     if (isTicket) {
       h += '<a href="' + esc(BASE + '/' + it.table + '.do?sys_id=' + it.id) + '" target="_blank" rel="noopener" style="font-family:Consolas,monospace;font-size:13px;color:#60a5fa;text-decoration:none">' + esc(it.number) + ' \u2197</a>';
@@ -634,6 +649,12 @@
     if (isTicket) h += btn('open', 'Open ticket', PRI, it.id) + btn('find', 'Find', null, it.id);
     else h += btn('adone', '\u2713 Done', GO, it.id);
     h += btn('next', 'Next \u2192', null, it.id) + '</div>';
+    if (cur.step === 'blocked') {
+      h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-2px 0 6px">' +
+        btn('stillblocked', '\u2713 Still blocked', 'border:1px solid #fb7185;background:#fb718522;color:#fb7185', it.id) +
+        btn('unblock', 'Unblocked \u2192 Prioritize', 'border:1px solid #60a5fa;background:none;color:#60a5fa', it.id) + '</div>' +
+        '<div id="snnBlockMsg" style="font-size:12px;margin-bottom:8px;min-height:0"></div>';
+    }
     if (cur.step === 'prioritize' || cur.step === 'top') {
       var mine = S.pomo && S.pomo.id === it.id;
       var small = 'border:1px solid #2a2a3e;background:none;color:#94a3b8;padding:4px 9px;font-size:12px';
@@ -707,6 +728,11 @@
         var on = c.queueDays.indexOf(d) >= 0;
         return '<button data-a="setday" data-id="' + d + '" style="padding:5px 10px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#fbbf24' : '#2a2a3e') + ';background:' + (on ? '#fbbf24' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + DAY_SHORT[d] + '</button>';
       }).join('') + '</div>';
+    h += '<div style="' + lbl + '">BLOCKED CHECK-IN DAY</div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px">Once a week, your Blocked tickets with no update in 7+ days show up for a quick look. Tap again to turn it off.</div>' +
+      '<div style="display:flex;gap:4px;flex-wrap:wrap">' + [1, 2, 3, 4, 5].map(function (d) {
+        var on = c.blockedDay === d;
+        return '<button data-a="setblockday" data-id="' + d + '" style="padding:5px 10px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#fb7185' : '#2a2a3e') + ';background:' + (on ? '#fb7185' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + DAY_SHORT[d] + '</button>';
+      }).join('') + '</div>';
     h += '<div style="' + lbl + '">PARK DATE</div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px">What \u201cPark until\u201d uses. Leave blank to pick a date each time.</div>' +
       '<div style="display:flex;gap:6px;align-items:center"><input type="date" id="snnSetPark" value="' + esc(c.parkDate || '') + '" style="' + inp() + 'width:auto;color-scheme:dark">' +
       (c.parkDate ? btn('clearpark', 'Clear', 'border:none;background:none;color:#64748b;padding:4px;font-size:12px;text-decoration:underline') : '') + '</div>' +
@@ -753,8 +779,9 @@
         b('Morning:') + ' clear the <span style="color:#a78bfa">purple</span> and <span style="color:#fbbf24">yellow</span> cards.',
         b('Rest of day:') + ' a few <span style="color:#60a5fa">blue</span> cards.',
         b('End of day:') + ' Wrap up \u2192 copy to OneNote.',
-        b('Friday:') + ' Weekly \u2192 copy your project update and time list.'
-      ]) +
+        b('Friday:') + ' Weekly \u2192 copy your project update and time list.',
+        cfg().blockedDay >= 0 ? b(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cfg().blockedDay] + ':') + ' quick Blocked check-in (still blocked, or move to Prioritize).' : ''
+      ].filter(Boolean)) +
       '<div style="font-size:12px;color:#94a3b8;margin-top:16px;padding-top:12px;border-top:1px solid #2a2a3e">A good day = purple and yellow done, plus a couple of blue.</div>' +
       '<div style="margin-top:10px">' + btn('tab-settings', '\u2699 Settings: queue days, park date, projects', 'border:none;background:none;color:#67e8f9;padding:0;font-weight:400;font-size:12px') + '</div>' +
       '</div>';
@@ -1272,6 +1299,22 @@
     if (['next', 'skip', 'adone'].indexOf(a) >= 0 && S.wait && id && S.wait[id] && waitState(byId(id) || itemById(id) || { id: id }) && waitState(byId(id) || itemById(id) || { id: id }).back) delete S.wait[id];
     switch (a) {
       case 'tab-settings': setTab('settings'); break;
+      case 'stillblocked':
+        S.blockedChecked = S.blockedChecked || {}; var prevB = S.blockedChecked[id]; S.blockedChecked[id] = TODAY; delete S.cur; save(); render();
+        showUndo('Checked. Back in next week\u2019s check-in.', function () { if (prevB) S.blockedChecked[id] = prevB; else delete S.blockedChecked[id]; save(); });
+        break;
+      case 'unblock':
+        var tb2 = byId(id); if (!tb2) break;
+        var newOrder = '2' + (String(tb2.order || '50').replace(/\D/g, '').slice(-1) || '0'), oldOrder = tb2.order;
+        var bm = document.getElementById('snnBlockMsg'); if (bm) { bm.textContent = 'Moving to Prioritize\u2026'; bm.style.color = '#94a3b8'; }
+        setOrder(tb2, newOrder).then(function () {
+          tb2.order = newOrder; tb2.lane = laneKey(newOrder); S.blockedChecked = S.blockedChecked || {}; S.blockedChecked[id] = TODAY; delete S.cur; save(); render();
+          showUndo(tb2.number + ' moved to Prioritize (Order ' + newOrder + ').', function () {
+            setOrder(tb2, oldOrder).then(function () { tb2.order = oldOrder; tb2.lane = laneKey(oldOrder); delete S.blockedChecked[id]; save(); render(); });
+          });
+        }).catch(function (e) { if (bm) { bm.textContent = 'Couldn\u2019t change the Order (' + e.message + '). Nothing changed.'; bm.style.color = '#f87171'; } });
+        break;
+      case 'setblockday': cfg().blockedDay = cfg().blockedDay === +id ? -1 : +id; save(); renderSettings(); setMsg('Saved.'); break;
       case 'setday': var dd = +id, qd = cfg().queueDays, qi = qd.indexOf(dd); if (qi >= 0) qd.splice(qi, 1); else qd.push(dd); qd.sort(); save(); renderSettings(); setMsg('Saved.'); break;
       case 'clearpark': cfg().parkDate = ''; save(); renderSettings(); setMsg('Saved.'); break;
       case 'addproj': cfg().projects.push({ name: '', nicknames: [] }); save(); renderSettings(); var ni = body.querySelectorAll('[data-f=name]'); if (ni.length) ni[ni.length - 1].focus(); break;
