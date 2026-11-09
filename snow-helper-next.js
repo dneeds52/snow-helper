@@ -75,6 +75,91 @@
       .then(function (j) { return j.result || []; });
   }
   // The ONLY write What's Next makes: setting or clearing a ticket's due date, when you click Park / Bring back.
+  /* ---------- ServiceNow time sheet (time_card) ----------
+     Log time adds hours to today's column on your time card for that ticket this week (Sun-Sat).
+     It creates the card if there isn't one yet, and never touches a card that's been submitted/approved. */
+  var DAY_FIELDS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  function weekSun() { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return dkey(d); }
+  function myUserId() {
+    var u = null; try { u = window.g_user; } catch (e) {}
+    for (var i = 0; !u && i < frames.length; i++) { try { u = frames[i].g_user; } catch (e) {} }
+    return (u && (u.userID || u.userId)) || '';
+  }
+  var tsCards = null, tsLoading = null;
+  function loadCards() {
+    if (tsLoading) return tsLoading;
+    var who = myUserId() ? 'user=' + myUserId() : 'user=javascript:gs.getUserID()';
+    tsLoading = q('time_card', who + '^week_starts_on=' + weekSun(), 'sys_id,task,category,state,' + DAY_FIELDS.join(','), 200).then(function (r) {
+      tsCards = r.map(function (c) {
+        var hrsObj = {}; DAY_FIELDS.forEach(function (d) { hrsObj[d] = parseFloat(v(c[d])) || 0; });
+        return { id: v(c.sys_id), task: v(c.task) || '', taskLabel: dv(c.task) || '', category: v(c.category) || '', categoryLabel: dv(c.category) || '', state: v(c.state) || '', stateLabel: dv(c.state) || '', hours: hrsObj };
+      });
+      tsLoading = null; return tsCards;
+    }).catch(function () { tsLoading = null; tsCards = tsCards || []; return tsCards; });
+    return tsLoading;
+  }
+  function tsOn() { return cfg().timesheet !== false; }
+  function cardEditable(c) { var st = String(c.state || c.stateLabel || ''); return !st || /pending|rejected|draft/i.test(st); }
+  function tsWrite(method, path, body) {
+    if (MOCK) return Promise.resolve(MOCK.tsWrite(method, path, body));
+    return fetch(BASE + path, { method: method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-UserToken': tok }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  // target: { taskId } (a ticket) or { cardId } (an existing row like Admin or a project). h can be negative (undo).
+  function tsAdd(target, h) {
+    var day = DAY_FIELDS[new Date().getDay()];
+    return (tsCards ? Promise.resolve(tsCards) : loadCards()).then(function (cards) {
+      var c = target.cardId ? cards.filter(function (x) { return x.id === target.cardId; })[0] : cards.filter(function (x) { return x.task && x.task === target.taskId; })[0];
+      if (c) {
+        if (!cardEditable(c)) throw new Error('locked:' + (c.stateLabel || c.state));
+        var before = c.hours[day] || 0, after = Math.max(0, Math.round((before + h) * 100) / 100), b = {}; b[day] = String(after);
+        return tsWrite('PATCH', '/api/now/table/time_card/' + c.id, b).then(function () { c.hours[day] = after; return { card: c, day: day, before: before, after: after }; });
+      }
+      if (!target.taskId || h <= 0) throw new Error('nocard');
+      var nb = { task: target.taskId, week_starts_on: weekSun(), category: 'task_work' }; nb[day] = String(h);
+      if (myUserId()) nb.user = myUserId();
+      return tsWrite('POST', '/api/now/table/time_card', nb).then(function (res) {
+        var rec = (res && res.result) || {}, hrsObj = {}; DAY_FIELDS.forEach(function (d) { hrsObj[d] = 0; }); hrsObj[day] = h;
+        var nc = { id: (rec.sys_id && (rec.sys_id.value || rec.sys_id)) || 'new_' + uid(), task: target.taskId, taskLabel: '', category: 'task_work', categoryLabel: 'Task work', state: 'Pending', stateLabel: 'Pending', hours: hrsObj };
+        cards.push(nc); return { card: nc, day: day, before: 0, after: h, created: true };
+      });
+    });
+  }
+  function tsWhy(e) {
+    var m = String(e && e.message || e);
+    if (/^locked:/.test(m)) return 'this week\u2019s time card is ' + (m.slice(7) || 'locked').toLowerCase();
+    if (m === 'nocard') return 'there\u2019s no time card row for it this week';
+    if (m === '401' || m === '403') return 'ServiceNow didn\u2019t allow it (' + m + ')';
+    return 'couldn\u2019t reach ServiceNow (' + m + ')';
+  }
+  function dayLabel(d) { return d.charAt(0).toUpperCase() + d.slice(1, 3); }
+  // ask once before the very first time-sheet save, then remember
+  var confirmYes = null, confirmNo = null;
+  function confirmOnce(msg, yes, no) {
+    if (S.tsOk) { yes(); return; }
+    confirmYes = function () { S.tsOk = true; save(); yes(); }; confirmNo = no || null;
+    document.getElementById('snnConfirmMsg').textContent = msg; document.getElementById('snnConfirm').style.display = 'flex';
+  }
+  // Meetings: where the hours go on the time sheet
+  function meetToOptions(ticket) {
+    var o = [], seenC = {};
+    if (ticket) o.push(['task:' + ticket.id, 'This ticket (' + ticket.number + ')']);
+    var mine = {}; tickets.forEach(function (t) { mine[t.id] = 1; });
+    (tsCards || []).forEach(function (c) {
+      if (c.task && mine[c.task]) return; if (seenC[c.id]) return; seenC[c.id] = 1;
+      var label = c.task ? (c.taskLabel || 'Project') : (c.categoryLabel || 'Admin');
+      if (!c.task && !/admin/i.test(c.categoryLabel + c.category) && /out of office|holiday|pto|vacation/i.test(c.categoryLabel)) return;
+      o.push(['card:' + c.id, label]);
+    });
+    o.push(['local', 'Just log it here']);
+    return o;
+  }
+  function meetToHtml(ticket) {
+    if (!tsOn()) return '';
+    var opts = meetToOptions(ticket), def = ticket ? 'task:' + ticket.id : ((opts.filter(function (x) { return /admin/i.test(x[1]); })[0] || ['local'])[0]);
+    return '<div id="snnMeetToWrap" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px;color:#94a3b8">Charge to <select id="snnMeetTo" data-ticket="' + (ticket ? esc(ticket.id) : '') + '" style="flex:1;min-width:0;padding:4px 6px;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:12px;color-scheme:dark">' +
+      opts.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (x[0] === def ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select></div>';
+  }
   function setOrder(t, order) {
     if (MOCK) return Promise.resolve(MOCK.write(t.table, t.id, { order: order }));
     return fetch(BASE + '/api/now/table/' + t.table + '/' + t.id, {
@@ -132,6 +217,9 @@
       tabBtn('next', 'Next') + tabBtn('add', '+ Add') + tabBtn('wrap', 'Wrap up') + tabBtn('weekly', 'Weekly') +
     '</div>' +
     '<div id="snnUndo" style="display:none;align-items:center;gap:8px;padding:8px 14px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;font-size:13px;flex-shrink:0"><span id="snnUndoMsg" style="flex:1;min-width:0"></span><button data-a="undo" style="background:none;border:1px solid #67e8f9;color:#67e8f9;border-radius:6px;padding:3px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer">Undo</button></div>' +
+    '<div id="snnConfirm" style="display:none;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 14px;background:#1e293b;border-bottom:1px solid #67e8f9;font-size:13px;flex-shrink:0"><span id="snnConfirmMsg" style="flex:1 1 100%"></span>' +
+      '<button data-a="tsyes" style="background:#67e8f9;border:1px solid #67e8f9;color:#0f0f1a;border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer">Yes, add to time sheet</button>' +
+      '<button data-a="tsno" style="background:none;border:1px solid #2a2a3e;color:#94a3b8;border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer">Just log it here</button></div>' +
     '<div id="snnBody" style="flex:1;overflow-y:auto;padding:16px 14px"></div>' +
     '</div>' +
     '<div id="snnStrip" data-a="expand" title="Open What\u2019s Next" style="display:none;width:100%;height:100%;cursor:pointer;align-items:center;justify-content:center;box-sizing:border-box;white-space:nowrap">' +
@@ -267,7 +355,7 @@
           if (!t.sla || br || pct > t.sla.pct) t.sla = { breached: br || (t.sla && t.sla.breached), pct: Math.max(pct, t.sla ? t.sla.pct : 0), due: dv(s.planned_end_time) }; }); })
         .catch(function () {});
       return Promise.all([notes, slas]);
-    }).then(function () { loading = false; loaded = true; loadErr = ''; noteArrivals(); var sb = document.getElementById('snnSub'); if (sb && /^Refresh/.test(sb.textContent)) sb.textContent = ''; if (!silent || tab === 'next' || tab === 'parked') keepTyping(render); })
+    }).then(function () { if (tsOn()) loadCards(); loading = false; loaded = true; loadErr = ''; noteArrivals(); var sb = document.getElementById('snnSub'); if (sb && /^Refresh/.test(sb.textContent)) sb.textContent = ''; if (!silent || tab === 'next' || tab === 'parked') keepTyping(render); })
       .catch(function (e) {
         loading = false; if (silent) return; loaded = true;
         var m = String(e.message || '');
@@ -635,6 +723,7 @@
       '<div id="snnMeet" style="display:none;margin-top:6px;padding:8px;border:1px solid #2a2a3e;border-radius:7px">' +
       '<input id="snnMeetName" list="snnMeetNames" placeholder="Meeting name: ED huddle" autocomplete="off" style="width:100%;box-sizing:border-box;padding:6px 9px;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:6px;color:#e2e8f0;font:inherit;font-size:13px;outline:none;margin-bottom:6px">' +
       '<datalist id="snnMeetNames">' + (S.recentMeetings || []).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+      meetToHtml(isTicket ? it : null) +
       '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#94a3b8;margin-right:2px">Took</span>' +
       [0.5, 1, 2].map(function (hh) { return '<button data-a="meetlog" data-h="' + hh + '" style="padding:3px 10px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #67e8f9;background:none;color:#67e8f9">' + hrs(hh) + '</button>'; }).join('') +
       '</div></div></div>';
@@ -728,6 +817,10 @@
         var on = c.queueDays.indexOf(d) >= 0;
         return '<button data-a="setday" data-id="' + d + '" style="padding:5px 10px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ' + (on ? '#fbbf24' : '#2a2a3e') + ';background:' + (on ? '#fbbf24' : 'none') + ';color:' + (on ? '#0f0f1a' : '#94a3b8') + '">' + DAY_SHORT[d] + '</button>';
       }).join('') + '</div>';
+    h += '<div style="' + lbl + '">TIME SHEET</div>' +
+      '<button data-a="settsheet" style="display:flex;align-items:center;gap:8px;padding:6px 0;border:none;background:none;color:#cbd5e1;font:inherit;font-size:13px;cursor:pointer;text-align:left">' +
+      '<span style="display:inline-block;width:28px;height:16px;border-radius:999px;position:relative;flex:none;background:' + (tsOn() ? '#67e8f9' : '#2a2a3e') + '"><span style="position:absolute;top:2px;left:' + (tsOn() ? '14px' : '2px') + ';width:12px;height:12px;border-radius:50%;background:#0f0f1a"></span></span>' +
+      'Log time also adds to my ServiceNow time sheet</button>';
     h += '<div style="' + lbl + '">BLOCKED CHECK-IN DAY</div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px">Once a week, your Blocked tickets with no update in 7+ days show up for a quick look. Tap again to turn it off.</div>' +
       '<div style="display:flex;gap:4px;flex-wrap:wrap">' + [1, 2, 3, 4, 5].map(function (d) {
         var on = c.blockedDay === d;
@@ -822,6 +915,7 @@
     h += '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#67e8f9;margin:16px 0 6px">LOG A MEETING</div>' +
       '<input id="snnMeetName" list="snnMeetNames" placeholder="Meeting name: ED huddle" autocomplete="off" style="' + inp() + 'margin-bottom:6px">' +
       '<datalist id="snnMeetNames">' + (S.recentMeetings || []).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+      meetToHtml(null) +
       '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#94a3b8;margin-right:2px">Took</span>' +
       [0.5, 1, 2].map(function (hh) { return '<button data-a="meetlog" data-h="' + hh + '" style="padding:3px 10px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;border:1px solid #67e8f9;background:none;color:#67e8f9">' + hrs(hh) + '</button>'; }).join('') + '</div>';
     if (mt.length) {
@@ -1280,6 +1374,13 @@
     if (msg) { msg.textContent = 'Found ' + t.number + ', highlighted in the list.'; msg.style.color = '#34d399'; }
   }
 
+  ov.addEventListener('input', function (e) {
+    if (e.target.id !== 'snnMeetName') return;
+    var sel = document.getElementById('snnMeetTo'); if (!sel) return;
+    var want = (S.meetCharge || {})[e.target.value.trim().toLowerCase()]; if (!want) return;
+    if (want === 'ticket') { var tid = sel.getAttribute('data-ticket'); if (tid) sel.value = 'task:' + tid; return; }
+    if (Array.prototype.some.call(sel.options, function (o) { return o.value === want; })) sel.value = want;
+  });
   ov.addEventListener('change', function (e) {
     var el = e.target;
     if (el.getAttribute && el.getAttribute('data-a') === 'movelane') {
@@ -1314,6 +1415,7 @@
           });
         }).catch(function (e) { if (bm) { bm.textContent = 'Couldn\u2019t change the Order (' + e.message + '). Nothing changed.'; bm.style.color = '#f87171'; } });
         break;
+      case 'settsheet': cfg().timesheet = !tsOn(); save(); renderSettings(); setMsg('Saved.'); if (tsOn()) loadCards(); break;
       case 'setblockday': cfg().blockedDay = cfg().blockedDay === +id ? -1 : +id; save(); renderSettings(); setMsg('Saved.'); break;
       case 'setday': var dd = +id, qd = cfg().queueDays, qi = qd.indexOf(dd); if (qi >= 0) qd.splice(qi, 1); else qd.push(dd); qd.sort(); save(); renderSettings(); setMsg('Saved.'); break;
       case 'clearpark': cfg().parkDate = ''; save(); renderSettings(); setMsg('Saved.'); break;
@@ -1374,24 +1476,43 @@
       case 'addsave': addItem(); break;
       case 'tab-wrap': setTab('wrap'); break;
       case 'copysum': copy(document.getElementById('snnSum').value); break;
-      case 'meetopen': var mb = document.getElementById('snnMeet'); mb.style.display = mb.style.display === 'none' ? 'block' : 'none'; if (mb.style.display === 'block') document.getElementById('snnMeetName').focus(); break;
+      case 'meetopen': if (tsOn() && !tsCards) loadCards().then(function () { var se = document.getElementById('snnMeetTo'), wr2 = document.getElementById('snnMeetToWrap'); if (se && wr2) wr2.outerHTML = meetToHtml(byId(se.getAttribute('data-ticket'))); }); var mb = document.getElementById('snnMeet'); mb.style.display = mb.style.display === 'none' ? 'block' : 'none'; if (mb.style.display === 'block') document.getElementById('snnMeetName').focus(); break;
       case 'meetdel':
         var mdl = meetingsToday().filter(function (x) { return x.id === id; })[0], mhv = dayTime()[id];
         S.meet[TODAY] = meetingsToday().filter(function (x) { return x.id !== id; }); delete dayTime()[id]; save(); render();
-        if (mdl) showUndo('Removed ' + mdl.name + '.', function () { S.meet[TODAY].push(mdl); dayTime()[id] = mhv; save(); });
+        if (mdl && mdl.ts) tsAdd({ cardId: mdl.ts.cardId }, -mdl.ts.h).catch(function () {});
+        if (mdl) showUndo('Removed ' + mdl.name + (mdl.ts ? ' (and its time sheet hours)' : '') + '.', function () { S.meet[TODAY].push(mdl); dayTime()[id] = mhv; save(); if (mdl.ts) tsAdd({ cardId: mdl.ts.cardId }, mdl.ts.h).catch(function () {}); });
         break;
+      case 'tsyes': document.getElementById('snnConfirm').style.display = 'none'; var cy = confirmYes; confirmYes = confirmNo = null; if (cy) cy(); break;
+      case 'tsno': document.getElementById('snnConfirm').style.display = 'none'; var cn = confirmNo; confirmYes = confirmNo = null; if (cn) cn(); break;
       case 'meetlog':
         var mnm = (document.getElementById('snnMeetName') || {}).value || '', mh = parseFloat(el.getAttribute('data-h'));
-        var mid = logMeeting(mnm, mh); render();
-        showUndo('Logged ' + hrs(mh) + ' for ' + meetingName(mid) + '.' + (tab === 'next' ? ' Back to your ticket.' : ''), function () {
-          var L = meetingsToday().filter(function (x) { return x.id !== mid; }); S.meet[TODAY] = L; delete dayTime()[mid]; save();
-        });
+        var mto = document.getElementById('snnMeetTo'), mchoice = mto ? mto.value : 'local', mlabel = mto && mto.selectedIndex >= 0 ? mto.options[mto.selectedIndex].text : '';
+        var mid = logMeeting(mnm, mh), wasTab = tab; render();
+        S.meetCharge = S.meetCharge || {}; S.meetCharge[meetingName(mid).toLowerCase()] = mchoice.indexOf('task:') === 0 ? 'ticket' : mchoice; save();
+        var localUndoM = function () { var L = meetingsToday().filter(function (x) { return x.id !== mid; }); S.meet[TODAY] = L; delete dayTime()[mid]; save(); };
+        var baseMsg = 'Logged ' + hrs(mh) + ' for ' + meetingName(mid) + '.';
+        if (mchoice === 'local' || !tsOn()) { showUndo(baseMsg + (wasTab === 'next' ? ' Back to your ticket.' : ''), localUndoM); break; }
+        var mtarget = mchoice.indexOf('task:') === 0 ? { taskId: mchoice.slice(5) } : { cardId: mchoice.slice(5) };
+        confirmOnce('Add ' + hrs(mh) + ' for ' + meetingName(mid) + ' to ' + mlabel + ' on your ServiceNow time sheet (' + dayLabel(DAY_FIELDS[new Date().getDay()]) + ')?', function () {
+          tsAdd(mtarget, mh).then(function (r) {
+            var mm = meetingsToday().filter(function (x) { return x.id === mid; })[0]; if (mm) { mm.ts = { cardId: r.card.id, h: mh, label: mlabel }; save(); }
+            showUndo(baseMsg + ' Added to ' + mlabel + ' (' + dayLabel(r.day) + ' now ' + hrs(r.after) + ').', function () { localUndoM(); tsAdd({ cardId: r.card.id }, -mh).catch(function () {}); });
+          }).catch(function (e) { showUndo(baseMsg + ' Saved here, not on your time sheet: ' + tsWhy(e) + '.', localUndoM); });
+        }, function () { showUndo(baseMsg + ' Saved here only.', localUndoM); });
         break;
       case 'addtime':
         var dta = dayTime(), add = parseFloat(el.getAttribute('data-h')), before = dta[id] || 0, tk = byId(id);
         S.names = S.names || {}; if (tk) S.names[id] = tk.number + ' ' + tk.sd;
         dta[id] = before + add; save(); render();
-        showUndo('Logged ' + hrs(add) + ' on ' + (tk ? tk.number : 'this item') + '. Today: ' + hrs(dta[id]) + '.', function () { var d2 = dayTime(); if (before) d2[id] = before; else delete d2[id]; save(); });
+        var localUndo = function () { var d2 = dayTime(); if (before) d2[id] = before; else delete d2[id]; save(); };
+        var lmsg = 'Logged ' + hrs(add) + ' on ' + (tk ? tk.number : 'this item') + '. Today: ' + hrs(dta[id]) + '.';
+        if (!tk || !tsOn()) { showUndo(lmsg, localUndo); break; }
+        confirmOnce('Add ' + hrs(add) + ' to ' + tk.number + ' on your ServiceNow time sheet (' + dayLabel(DAY_FIELDS[new Date().getDay()]) + ')? This only asks once.', function () {
+          tsAdd({ taskId: tk.id }, add).then(function (r) {
+            showUndo(lmsg + ' Time sheet: ' + dayLabel(r.day) + ' now ' + hrs(r.after) + (r.created ? ' (new row)' : '') + '.', function () { localUndo(); tsAdd({ cardId: r.card.id }, -add).catch(function () {}); });
+          }).catch(function (e) { showUndo(lmsg + ' Saved here, not on your time sheet: ' + tsWhy(e) + '.', localUndo); });
+        }, function () { showUndo(lmsg + ' Saved here only.', localUndo); });
         break;
       case 'settime': S.names = S.names || {}; var wr = ((wrapData && wrapData.rows) || []).filter(function (x) { return x.id === id; })[0]; if (wr) S.names[id] = wr.number + ' ' + wr.sd; var dt = dayTime(), hh = parseFloat(el.getAttribute('data-h')); if (dt[id] === hh) delete dt[id]; else dt[id] = hh; save(); renderWrap(true); break;
       case 'rebuildsum': var lt = logToday(); lt.edited = false; delete lt.summary; save(); renderWrap(true); break;
