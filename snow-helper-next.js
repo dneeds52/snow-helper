@@ -89,10 +89,10 @@
   function loadCards() {
     if (tsLoading) return tsLoading;
     var who = myUserId() ? 'user=' + myUserId() : 'user=javascript:gs.getUserID()';
-    tsLoading = q('time_card', who + '^week_starts_on=' + weekSun(), 'sys_id,task,category,state,' + DAY_FIELDS.join(','), 200).then(function (r) {
+    tsLoading = q('time_card', who + '^week_starts_on=' + weekSun(), 'sys_id,task,task.number,task.short_description,category,state,' + DAY_FIELDS.join(','), 200).then(function (r) {
       tsCards = r.map(function (c) {
         var hrsObj = {}; DAY_FIELDS.forEach(function (d) { hrsObj[d] = parseFloat(v(c[d])) || 0; });
-        return { id: v(c.sys_id), task: v(c.task) || '', taskLabel: dv(c.task) || '', category: v(c.category) || '', categoryLabel: dv(c.category) || '', state: v(c.state) || '', stateLabel: dv(c.state) || '', hours: hrsObj };
+        return { id: v(c.sys_id), task: v(c.task) || '', taskLabel: [dv(c['task.number']) || v(c['task.number']), dv(c['task.short_description']) || v(c['task.short_description'])].filter(Boolean).join(' \u00b7 ') || dv(c.task) || '', category: v(c.category) || '', categoryLabel: dv(c.category) || '', state: v(c.state) || '', stateLabel: dv(c.state) || '', hours: hrsObj };
       });
       tsLoading = null; return tsCards;
     }).catch(function () { tsLoading = null; tsCards = tsCards || []; return tsCards; });
@@ -706,6 +706,7 @@
     } else {
       if (it.label) h += '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#67e8f922;color:#67e8f9;border:1px solid #67e8f955">' + esc(it.label) + '</span>';
       h += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin:8px 0 10px">' + esc(it.title) + '</div>';
+      if (it.details) h += '<div style="font-size:13px;color:#cbd5e1;line-height:1.5;white-space:pre-wrap;margin:-4px 0 10px;padding:8px 10px;background:#0f0f1a;border-radius:6px;max-height:160px;overflow-y:auto">' + esc(it.details) + '</div>';
     }
     h += '<div style="font-size:13px;color:#cbd5e1"' + (isTicket && it.noteSrc ? ' title="Last update read from the ' + it.noteSrc + '"' : '') + '>' + esc(cur.why) + '</div>';
     if (isTicket && it.changes && it.changes.length) it.changes.forEach(function (c) {
@@ -905,6 +906,7 @@
     var doneToday = S.adhoc.filter(function (a) { return a.done === TODAY; });
     var h = '<div style="color:#94a3b8;font-size:13px;margin-bottom:10px">Project work that isn\u2019t in ServiceNow. Pick a bucket and it shows up in your walk alongside your tickets until you mark it done.</div>';
     h += '<input id="snnTitle" placeholder="Confirm go-live testing dates" style="' + inp() + 'margin-bottom:8px">';
+    h += '<textarea id="snnDetails" placeholder="Details (optional): who asked, links, what done looks like" style="' + inp() + 'min-height:56px;resize:vertical;font-size:13px;margin-bottom:8px"></textarea>';
     h += '<input id="snnLabel" list="snnLabels" placeholder="Project label (optional)' + (cfg().projects[0] ? ': ' + esc(cfg().projects[0].name) : '') + '" style="' + inp() + 'margin-bottom:8px">';
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#94a3b8">Bucket <select id="snnLane" style="flex:1;padding:8px 9px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:7px;color:#e2e8f0;font:inherit;font-size:13px;color-scheme:dark">' + laneOptions('initial') + '</select></div>';
     h += '<datalist id="snnLabels">' + S.labels.map(function (l) { return '<option value="' + esc(l) + '">'; }).join('') + '</datalist>';
@@ -929,6 +931,7 @@
       if (editingId === a.id) {
         return '<div style="padding:8px 0;border-top:1px solid #2a2a3e">' +
           '<input id="snnEditTitle" value="' + esc(a.title) + '" style="' + inp() + 'margin-bottom:6px">' +
+          '<textarea id="snnEditDetails" placeholder="Details (optional)" style="' + inp() + 'min-height:56px;resize:vertical;font-size:13px;margin-bottom:8px">' + esc(a.details || '') + '</textarea>' +
           '<input id="snnEditLabel" list="snnLabels" value="' + esc(a.label || '') + '" placeholder="Project label (optional)" style="' + inp() + 'margin-bottom:6px">' +
           '<select id="snnEditLane" style="' + inp() + 'margin-bottom:6px;color-scheme:dark">' + laneOptions(itemLane(a)) + '</select>' +
           '<div style="display:flex;gap:6px">' + btn('editsave', 'Save', PRI, a.id) + btn('editcancel', 'Cancel', null, a.id) + '</div></div>';
@@ -936,6 +939,7 @@
       var ic = 'background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;';
       return '<div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-top:1px solid #2a2a3e">' +
         '<span style="flex:1;min-width:0;' + (done ? 'color:#64748b;text-decoration:line-through' : '') + '">' + (a.label ? '<span style="font-size:11px;color:#67e8f9">' + esc(a.label) + '</span> ' : '') + esc(a.title) +
+        (a.details && !done ? '<span style="display:block;font-size:12px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(a.details.split('\n')[0]) + '</span>' : '') +
         (done ? '' : '<span style="display:block;font-size:11px;color:#64748b">' + esc((ITEM_LANES.filter(function (l) { return l[0] === itemLane(a); })[0] || ['', ''])[1]) + (isParked(a) ? ' \u00b7 parked until ' + esc(shortDate(a.due)) : '') + '</span>') + '</span>' +
         (done ? '<button data-a="areopen" data-id="' + a.id + '" title="Not done after all" style="' + ic + 'color:#94a3b8;font-size:12px;text-decoration:underline">reopen</button>' :
           '<button data-a="aedit" data-id="' + a.id + '" title="Edit" style="' + ic + 'color:#94a3b8">\u270e</button>' +
@@ -983,6 +987,7 @@
     var a = S.adhoc.filter(function (x) { return x.id === id; })[0]; if (!a) return;
     var t = document.getElementById('snnEditTitle').value.trim(), l = document.getElementById('snnEditLabel').value.trim();
     if (!t) { document.getElementById('snnEditTitle').style.borderColor = '#f87171'; return; }
+    var ed = document.getElementById('snnEditDetails'); if (ed) a.details = ed.value.trim();
     a.title = t; a.label = l; a.lane = document.getElementById('snnEditLane').value; a.touched = TODAY; if (l && S.labels.indexOf(l) < 0) S.labels.push(l);
     editingId = null; save(); renderAdd();
   }
@@ -1004,7 +1009,8 @@
     if (!title) { document.getElementById('snnAddMsg').textContent = 'Type what the item is first.'; document.getElementById('snnAddMsg').style.color = '#f87171'; return; }
     var laneSel = document.getElementById('snnLane');
     var nid = uid(); if (S.known && S.known.day === TODAY) S.known.ids.push(nid);
-    S.adhoc.push({ id: nid, title: title, label: label, lane: laneSel ? laneSel.value : 'initial', added: TODAY, done: null });
+    var detEl = document.getElementById('snnDetails'), details = detEl ? detEl.value.trim() : '';
+    S.adhoc.push({ id: nid, title: title, details: details, label: label, lane: laneSel ? laneSel.value : 'initial', added: TODAY, done: null });
     if (label && S.labels.indexOf(label) < 0) S.labels.push(label);
     save(); renderAdd();
     document.getElementById('snnAddMsg').textContent = 'Added.';
